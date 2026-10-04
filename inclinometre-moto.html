@@ -115,12 +115,23 @@ body.alert #val{color:#ff3d5a}
 #ir{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 #ird{font-size:22px}#irt{font-size:13px;color:#a9a4cf}
 #stp{margin-top:2px;padding:3px 10px;font-size:14px}
+.stage.mapon{overflow:hidden}
+.stage.follow #map{inset:auto;left:-60%;right:-60%;top:-50%;bottom:-50%;border-radius:0;transform-origin:50% 50%;transform:translateY(9%)}
+.stage.follow .leaflet-control-attribution{display:none}
+#me{display:none;position:absolute;left:50%;top:68%;width:34px;height:42px;margin:-21px 0 0 -17px;z-index:6;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
+.stage.follow #me{display:block}
+#attr{display:none;position:absolute;left:8px;bottom:3px;font-size:10px;color:rgba(255,255,255,.75);z-index:6}
+.stage.follow #attr{display:block}
+#fol{position:absolute;right:10px;top:72px;pointer-events:auto;background:rgba(10,12,40,.92);color:#f5f3ff;border:1px solid rgba(255,255,255,.2);padding:6px 14px;font-size:15px;z-index:6}
 </style>
 </head>
 <body>
 <div class="top"><button id="kbtn" class="pill">A</button><button id="mapbtn" class="pill">Carte</button><p id="dbg">capteurs : en attente</p><button id="tbtn" class="pill">Nuit</button></div>
 <section class="stage card"><div id="map"></div>
 <div id="nav">
+  <div id="me"><svg viewBox="0 0 34 42" width="34" height="42"><path d="M17 2 L31 38 L17 30 L3 38 Z" fill="#4cc2ff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg></div>
+  <div id="attr">&copy; OpenStreetMap</div>
+  <button id="fol" class="pill">Suivi</button>
   <div id="navtop">
     <div class="navbox"><div id="navbar"><input id="dest" type="search" placeholder="O&ugrave; vas-tu ?" enterkeyhint="search" autocomplete="off" autocorrect="off"><button id="go" class="pill">Go</button></div><div id="res"></div></div>
   </div>
@@ -152,7 +163,7 @@ body.alert #val{color:#ff3d5a}
 <div id="hist"><div id="hbody"></div></div>
 <script>
 (function(){
-  var MIN=15,KEY="rides",ux=0,uy=1,uz=0,haveUp=false,v=0,f=0,maxL=0,maxR=0,on=false,ready=false,frozen=true,gid=null,wl=null,ride=null,lastLat=null,lastLon=null,lastStore=0,cs={on:false},test=false,rawv=0,off=0,SG=1,demo=false,dtimer=null,dt0=0,thr=0,armed=true,actx=null,map=null,mk=null,live=null,mapOn=false,mapFirst=false,dm=null;
+  var MIN=15,KEY="rides",ux=0,uy=1,uz=0,haveUp=false,v=0,f=0,maxL=0,maxR=0,on=false,ready=false,frozen=true,gid=null,wl=null,ride=null,lastLat=null,lastLon=null,lastStore=0,cs={on:false},test=false,rawv=0,off=0,SG=1,follow=false,hT=0,hd=0,pLat=null,pLon=null,demo=false,dtimer=null,dt0=0,thr=0,armed=true,actx=null,map=null,mk=null,live=null,mapOn=false,mapFirst=false,dm=null;
   try{SG=localStorage.getItem("sg")==="-1"?-1:1;thr=+localStorage.getItem("thr")||0}catch(e){}
   var $=function(i){return document.getElementById(i)};
   function load(){try{return JSON.parse(localStorage.getItem(KEY))||[]}catch(e){return[]}}
@@ -213,6 +224,7 @@ body.alert #val{color:#ff3d5a}
     var dt=lastT?Math.min(.1,(t-lastT)/1000):.016;lastT=t;
     disp+=(f-disp)*(1-Math.exp(-dt/.045));
     if(lastDeg===null||Math.abs(disp-lastDeg)>.02){lastDeg=disp;$("bikeimg").style.transform="translate3d(0,0,0) rotate("+disp.toFixed(2)+"deg)"}
+    if(follow){var dh=((hT-hd+540)%360)-180;hd=(hd+dh*(1-Math.exp(-dt/.3))+360)%360;$("map").style.transform="translateY(9%) rotate("+(-hd).toFixed(1)+"deg)"}
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -223,7 +235,18 @@ body.alert #val{color:#ff3d5a}
       var s=p.coords.speed;v=(s==null||s<0)?0:s;var k=Math.round(v*3.6);
       setH("spd",(s==null||s<0?"--":k)+' <small>km/h</small>');
       lastLat=p.coords.latitude;lastLon=p.coords.longitude;
-      if(map){var ll=[lastLat,lastLon];mk.setLatLng(ll);if(!map.hasLayer(mk))mk.addTo(map);if(mapOn){if(!mapFirst){map.setView(ll,16);mapFirst=true}else map.panTo(ll)}if(ride)live.addLatLng(ll)}
+      var hh=p.coords.heading;
+      if(hh!=null&&!isNaN(hh)&&v>1.5)hT=hh;
+      else if(pLat!=null&&hav(pLat,pLon,lastLat,lastLon)>12)hT=brg(pLat,pLon,lastLat,lastLon);
+      if(pLat==null||hav(pLat,pLon,lastLat,lastLon)>12){pLat=lastLat;pLon=lastLon}
+      if(map){var ll=[lastLat,lastLon];mk.setLatLng(ll);
+        if(follow){if(map.hasLayer(mk))map.removeLayer(mk)}else if(!map.hasLayer(mk))mk.addTo(map);
+        if(mapOn){
+          if(follow){var z=(nav&&nav.dn!=null&&nav.dn<250)?18:(v>22?15:(v>14?16:17));
+            if(!mapFirst||map.getZoom()!==z){map.setView(ll,z,{animate:false});mapFirst=true}else map.panTo(ll,{animate:true,duration:1,easeLinearity:1})}
+          else if(!mapFirst){map.setView(ll,16);mapFirst=true}else map.panTo(ll)
+        }
+        if(ride)live.addLatLng(ll)}
       if(nav)navUpdate(lastLat,lastLon,v);
       if(ride){
         if(v*3.6>ride.mV)ride.mV=v*3.6;
@@ -329,7 +352,7 @@ body.alert #val{color:#ff3d5a}
     if(!mapOk()){$("msg").textContent="Carte indisponible : il faut une connexion internet.";return}
     mapOn=!mapOn;$("mapbtn").classList.toggle("on",mapOn);$("mapbtn").textContent=mapOn?"Moto":"Carte";
     document.querySelector(".stage").classList.toggle("mapon",mapOn);document.body.classList.toggle("mapmode",mapOn);
-    if(!mapOn)return;
+    if(!mapOn){if(follow)setFollow(false);return}
     if(!map){
       map=L.map("map",{zoomControl:false}).setView([46.6,2.4],5);tiles().addTo(map);
       mk=L.circleMarker([0,0],{radius:9,color:"#fff",weight:3,fillColor:"#ff8a4c",fillOpacity:1});
@@ -339,6 +362,18 @@ body.alert #val{color:#ff3d5a}
     setTimeout(function(){map.invalidateSize();if(lastLat!=null){mk.addTo(map);map.setView([lastLat,lastLon],16);mapFirst=true}else $("msg").textContent="En attente du GPS pour te placer sur la carte\u2026"},60);
   }
   $("mapbtn").onclick=toggleMap;
+
+  function brg(a,b,c,d){var y=Math.sin((d-b)*Math.PI/180)*Math.cos(c*Math.PI/180),x=Math.cos(a*Math.PI/180)*Math.sin(c*Math.PI/180)-Math.sin(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.cos((d-b)*Math.PI/180);return(Math.atan2(y,x)*180/Math.PI+360)%360}
+  function setFollow(on){
+    follow=on;document.querySelector(".stage").classList.toggle("follow",on);$("fol").textContent=on?"Nord":"Suivi";
+    if(map){
+      if(map.dragging){on?map.dragging.disable():map.dragging.enable()}
+      if(!on&&mk&&!map.hasLayer(mk))mk.addTo(map);
+      setTimeout(function(){map.invalidateSize({animate:false});if(lastLat!=null){mapFirst=true;map.setView([lastLat,lastLon],on?17:16,{animate:false})}},60);
+    }
+    if(!on)$("map").style.transform="";
+  }
+  $("fol").onclick=function(){if(!mapOn)return;setFollow(!follow)};
 
   /* ---------- itinéraire ---------- */
   var nav=null,routeLine=null,destMk=null,lastRoute=0;
@@ -419,9 +454,9 @@ body.alert #val{color:#ff3d5a}
       if(d2<Math.max(35,sp*3)||(d2>nav.lastD+8&&nav.lastD<90)){k++;nav.lastD=1e9;continue}
       nav.lastD=Math.min(nav.lastD,d2);dn=d2;break;
     }
-    nav.k=k;
+    nav.k=k;nav.dn=dn;
     var rem=Math.max(0,nav.tot-nav.cum[bi]),dd=hav(lat,lon,nav.dest[0],nav.dest[1]);
-    if(nav.fresh&&Date.now()-nav.t0>3000&&mapOn){map.setView([lat,lon],16);nav.fresh=false}
+    if(nav.fresh&&Date.now()-nav.t0>3000&&mapOn){setFollow(true);nav.fresh=false}
     if(dd<35||(k>=st.length-1)){
       if(!nav.done){nav.done=true;setTimeout(stopNav,7000)}
       showIns("Vous \u00EAtes arriv\u00E9","","\u2691","","","");return;
