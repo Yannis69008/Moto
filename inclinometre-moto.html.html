@@ -20,7 +20,8 @@ body{margin:0;height:100%;background:transparent;color:var(--fg);font-family:"Ba
 #dbg{margin:0;text-align:center;font-size:13px;color:var(--mut);letter-spacing:.02em}
 .stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:18px 14px;background:radial-gradient(70% 62% at 50% 62%,rgba(170,185,255,.55),rgba(120,130,230,.16) 60%,transparent 80%),var(--card)}
 #bikewrap{height:min(100%,300px);display:flex;justify-content:center;align-items:flex-end;border-bottom:2px solid rgba(255,255,255,.4);width:100%}
-#bikeimg{height:100%;width:auto;transform-origin:49.8% 100%;will-change:transform}
+#bikeimg{height:100%;width:auto;transform-origin:49.8% 100%;will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.stage{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 .dash{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .dash .card{padding:8px 14px 10px;text-align:center}
 .big{font-size:68px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
@@ -89,6 +90,12 @@ body.mapmode .dash .card{padding:4px 10px 6px}
 html[data-theme="night"] .ov{background:#000}
 .grid4 .st b{font-size:22px}
 .st b span{font-size:inherit}
+.btns2{flex-wrap:wrap}.btns2 .sm{flex:1 1 28%}
+body.alert .stage{box-shadow:0 0 0 4px #ff3d5a,0 0 40px rgba(255,61,90,.75)}
+body.alert #val{color:#ff3d5a}
+.rec{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.tools{display:flex;gap:8px;margin-bottom:12px}.tools .pill{flex:1}
+#chart{width:100%;height:170px;display:block;margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -108,17 +115,20 @@ html[data-theme="night"] .ov{background:#000}
 </div>
 <div class="btns btns2">
   <button id="tst" class="sm">Test &agrave; l&rsquo;arr&ecirc;t</button>
+  <button id="dem" class="sm">D&eacute;mo</button>
   <button id="zer" class="sm" style="display:none">Z&eacute;ro</button>
   <button id="sns" class="sm">Sens</button>
+  <button id="alt" class="sm">Alerte off</button>
   <button id="rst" class="sm">Reset max</button>
 </div>
 <p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
 <div id="shareov" class="ov"></div>
+<input type="file" id="imp" accept=".json,application/json" style="display:none">
 <div id="hist"><div id="hbody"></div></div>
 <script>
 (function(){
-  var MIN=15,KEY="rides",ux=0,uy=1,uz=0,haveUp=false,v=0,f=0,maxL=0,maxR=0,on=false,ready=false,frozen=true,gid=null,wl=null,ride=null,lastLat=null,lastLon=null,lastStore=0,cs={on:false},test=false,rawv=0,off=0,SG=1,map=null,mk=null,live=null,mapOn=false,mapFirst=false,dm=null;
-  try{SG=localStorage.getItem("sg")==="-1"?-1:1}catch(e){}
+  var MIN=15,KEY="rides",ux=0,uy=1,uz=0,haveUp=false,v=0,f=0,maxL=0,maxR=0,on=false,ready=false,frozen=true,gid=null,wl=null,ride=null,lastLat=null,lastLon=null,lastStore=0,cs={on:false},test=false,rawv=0,off=0,SG=1,demo=false,dtimer=null,dt0=0,thr=0,armed=true,actx=null,map=null,mk=null,live=null,mapOn=false,mapFirst=false,dm=null;
+  try{SG=localStorage.getItem("sg")==="-1"?-1:1;thr=+localStorage.getItem("thr")||0}catch(e){}
   var $=function(i){return document.getElementById(i)};
   function load(){try{return JSON.parse(localStorage.getItem(KEY))||[]}catch(e){return[]}}
   function save(l){try{localStorage.setItem(KEY,JSON.stringify(l));return true}catch(e){return false}}
@@ -148,7 +158,7 @@ html[data-theme="night"] .ov{background:#000}
     else if(a>cs.peak){cs.peak=a;cs.lat=lastLat;cs.lon=lastLon}
   }
   function mot(e){
-    if(test)return;
+    if(test||demo)return;
     var r=e.rotationRate;if(!r||r.alpha==null||!haveUp)return;
     var w=(r.beta*ux+r.gamma*uy+r.alpha*uz)*Math.PI/180;
     frozen=v*3.6<MIN;
@@ -158,23 +168,35 @@ html[data-theme="night"] .ov{background:#000}
       f+=(phi-f)*0.15;
       if(f>maxR)maxR=f;if(-f>maxL)maxL=-f;
       if(ride){if(f>ride.mR)ride.mR=f;if(-f>ride.mL)ride.mL=-f;track()}
-    }
+    }else f+=(0-f)*0.1;
+    checkAlert();
     draw();
   }
+  var cc={};
+  function setT(id,v){if(cc[id]!==v){cc[id]=v;$(id).textContent=v}}
+  function setH(id,v){if(cc[id]!==v){cc[id]=v;$(id).innerHTML=v}}
   function draw(){
     var m=Math.abs(f);
-    $("val").textContent=Math.round(m)+"\u00B0";
-    $("side").textContent=(frozen&&!test)?"figé":(m<1?"droit":(f>0?"droite":"gauche"))+(test?" (test)":"");
-    $("bikeimg").style.transform="rotate("+f.toFixed(1)+"deg)";
-    $("mr").textContent=Math.round(maxR)+"\u00B0";$("ml").textContent=Math.round(maxL)+"\u00B0";
-    $("dbg").textContent=test?"mode test à l'arrêt":(ride?"\u25CF enregistrement en cours":"angle calculé avec GPS + gyroscope");
+    setT("val",Math.round(m)+"°");
+    setT("side",(frozen&&!test&&!demo)?"figé":(m<1?"droit":(f>0?"droite":"gauche"))+(test?" (test)":""));
+    setT("mr",Math.round(maxR)+"°");setT("ml",Math.round(maxL)+"°");
+    setT("dbg",demo?"mode démo (valeurs simulées)":test?"mode test à l'arrêt":(ride?"● enregistrement en cours":"angle calculé avec GPS + gyroscope"));
   }
+  /* la moto glisse vers l'angle mesuré à chaque image de l'écran */
+  var disp=0,lastDeg=null,lastT=0;
+  function frame(t){
+    var dt=lastT?Math.min(.1,(t-lastT)/1000):.016;lastT=t;
+    disp+=(f-disp)*(1-Math.exp(-dt/.045));
+    if(lastDeg===null||Math.abs(disp-lastDeg)>.02){lastDeg=disp;$("bikeimg").style.transform="translate3d(0,0,0) rotate("+disp.toFixed(2)+"deg)"}
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
   function gps(){
     if(gid!=null)return;
-    if(!navigator.geolocation){$("spd").innerHTML="GPS indisponible";return}
+    if(!navigator.geolocation){setH("spd","GPS indisponible");return}
     gid=navigator.geolocation.watchPosition(function(p){
       var s=p.coords.speed;v=(s==null||s<0)?0:s;var k=Math.round(v*3.6);
-      $("spd").innerHTML=(s==null||s<0?"--":k)+' <small>km/h</small>';
+      setH("spd",(s==null||s<0?"--":k)+' <small>km/h</small>');
       lastLat=p.coords.latitude;lastLon=p.coords.longitude;
       if(map){var ll=[lastLat,lastLon];mk.setLatLng(ll);if(!map.hasLayer(mk))mk.addTo(map);if(mapOn){if(!mapFirst){map.setView(ll,16);mapFirst=true}else map.panTo(ll)}if(ride)live.addLatLng(ll)}
       if(ride){
@@ -182,7 +204,7 @@ html[data-theme="night"] .ov{background:#000}
         var n=Date.now();
         if(n-lastStore>=2000){lastStore=n;ride.p.push([+lastLat.toFixed(5),+lastLon.toFixed(5),Math.round(f),k]);ride.t1=n;if(ride.p.length%10===0)persist()}
       }
-    },function(){$("spd").innerHTML='<span style="font-size:26px">GPS refusé</span>';$("msg").textContent="Autorise la localisation : Réglages > Confidentialité et sécurité > Service de localisation > Safari."},{enableHighAccuracy:true,maximumAge:0});
+    },function(){setH("spd",'<span style="font-size:26px">GPS refusé</span>');$("msg").textContent="Autorise la localisation : Réglages > Confidentialité et sécurité > Service de localisation > Safari."},{enableHighAccuracy:true,maximumAge:0});
   }
   async function ensure(){
     try{
@@ -197,7 +219,7 @@ html[data-theme="night"] .ov{background:#000}
   }
   async function toggleTest(){
     if(test){test=false;$("tst").classList.remove("on");$("tst").textContent="Test à l'arrêt";$("zer").style.display="none";f=0;$("msg").textContent="Mode test terminé.";draw();return}
-    if(on){$("msg").textContent="Termine d'abord la sortie en cours.";return}
+    if(on||demo){$("msg").textContent="Termine d'abord la sortie ou la démo en cours.";return}
     if(!(await ensure()))return;
     test=true;off=0;$("tst").classList.add("on");$("tst").textContent="Quitter le test";$("zer").style.display="";
     $("msg").textContent="Mets le téléphone en place, moto droite, touche Zéro, puis penche : vérifie le côté et l'angle.";draw();
@@ -229,13 +251,50 @@ html[data-theme="night"] .ov{background:#000}
     on=false;frozen=true;$("start").textContent="Démarrer";draw();
     if(openId){$("hist").classList.add("open");detail(openId)}
   }
-  $("start").onclick=function(){if(test){$("msg").textContent="Quitte d'abord le mode test.";return}on?stop():start()};
+  $("start").onclick=function(){if(demo){$("msg").textContent="Arrête d'abord la démo.";return}if(test){$("msg").textContent="Quitte d'abord le mode test.";return}on?stop():start()};
   $("rst").onclick=function(){maxL=maxR=0;draw()};
   document.addEventListener("visibilitychange",async function(){
     if(document.visibilityState==="hidden")persist();
     else if(on){try{wl=await navigator.wakeLock.request("screen")}catch(e){}}
   });
   window.addEventListener("pagehide",persist);
+
+  /* ---------- alerte, démo ---------- */
+  function beep(){
+    try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();if(actx.state==="suspended")actx.resume();
+      var o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.3;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.2)}catch(e){}
+  }
+  function checkAlert(){
+    var a=Math.abs(f);
+    if(!thr){document.body.classList.remove("alert");return}
+    if(a>=thr){document.body.classList.add("alert");if(armed){armed=false;beep();try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}}}
+    else if(a<thr-3){armed=true;document.body.classList.remove("alert")}
+  }
+  var THS=[0,35,40,45,50];
+  function altLabel(){$("alt").textContent=thr?"Alerte "+thr+"\u00B0":"Alerte off"}
+  $("alt").onclick=function(){
+    thr=THS[(THS.indexOf(thr)+1)%THS.length];armed=true;altLabel();document.body.classList.remove("alert");
+    try{localStorage.setItem("thr",String(thr))}catch(e){}
+    if(thr)beep();
+    $("msg").textContent=thr?"Alerte \u00E0 "+thr+"\u00B0 : l\u2019\u00E9cran clignote en rouge et un bip retentit (le bip est coup\u00E9 si l\u2019iPhone est en silencieux).":"Alerte d\u00E9sactiv\u00E9e.";
+  };
+  altLabel();
+  function toggleDemo(){
+    if(demo){
+      demo=false;clearInterval(dtimer);$("dem").classList.remove("on");$("dem").textContent="D\u00E9mo";f=0;frozen=true;
+      setH("spd",'-- <small>km/h</small>');document.body.classList.remove("alert");$("msg").textContent="D\u00E9mo termin\u00E9e.";draw();return;
+    }
+    if(on||test){$("msg").textContent="Termine d\u2019abord la sortie ou le test.";return}
+    demo=true;frozen=false;dt0=Date.now();maxL=maxR=0;armed=true;
+    $("dem").classList.add("on");$("dem").textContent="Arr\u00EAter la d\u00E9mo";
+    $("msg").textContent="Mode d\u00E9mo : valeurs simul\u00E9es, rien n\u2019est enregistr\u00E9.";
+    dtimer=setInterval(function(){
+      var t=(Date.now()-dt0)/1000;f=52*Math.sin(t*.7)*Math.min(1,t/3);
+      setH("spd",Math.round(62+28*Math.sin(t*.35))+' <small>km/h</small>');
+      if(f>maxR)maxR=f;if(-f>maxL)maxL=-f;checkAlert();draw();
+    },30);
+  }
+  $("dem").onclick=toggleDemo;
 
   /* ---------- cartes ---------- */
   function mapOk(){return typeof L!=="undefined"}
@@ -279,6 +338,7 @@ html[data-theme="night"] .ov{background:#000}
   function stat(a,b){return '<div class="card st"><b>'+a+'</b><span>'+b+'</span></div>'}
   function list(){
     killDm();var l=load(),h='<div class="hh"><h2>Stats</h2><button class="pill" id="hx">Fermer</button></div>';
+    h+=records(l)+'<div class="tools"><button class="pill" id="exa">Exporter tout</button><button class="pill" id="ima">Importer</button></div><p class="legend" id="imsg" style="margin-top:-6px"></p>';
     if(!l.length)h+='<p class="empty">Aucune sortie pour l\u2019instant. Touche Démarrer pour en enregistrer une, ses stats apparaîtront ici.</p>';
     l.forEach(function(r){h+='<div class="card ride" data-id="'+r.id+'"><div class="rt"><b>'+when(r.t0)+'</b><span>'+dur(r.t1-r.t0)+' \u00B7 '+km(r).toFixed(1)+' km</span></div><div class="rs"><span>'+Math.round(r.mV)+' km/h max</span><span class="cl">G '+Math.round(r.mL)+'\u00B0</span><span class="cr">D '+Math.round(r.mR)+'\u00B0</span></div></div>'});
     $("hbody").innerHTML=h;
@@ -313,6 +373,43 @@ html[data-theme="night"] .ov{background:#000}
 
   /* ---------- stats et partage ---------- */
   var cur=null;
+  function chart(r){
+    var cv=$("chart");if(!cv||r.p.length<2)return;
+    var dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;
+    var g=cv.getContext("2d");g.scale(dpr,dpr);
+    var p=r.p,n=p.length,mx=Math.max(20,Math.ceil(Math.max(r.mL,r.mR)/10)*10),L0=34,R0=8,y0=H/2;
+    var X=function(i){return L0+(W-L0-R0)*i/(n-1)},Y=function(a){return y0-(a/mx)*(H/2-16)};
+    g.lineWidth=1;g.strokeStyle="rgba(255,255,255,.14)";g.fillStyle="#a9a4cf";g.font="11px sans-serif";g.textAlign="left";g.textBaseline="middle";
+    [-mx,-mx/2,0,mx/2,mx].forEach(function(a){g.beginPath();g.moveTo(L0,Y(a));g.lineTo(W-R0,Y(a));g.stroke();g.fillText(Math.abs(Math.round(a))+"\u00B0",2,Y(a))});
+    g.fillStyle="#ff8a4c";g.fillText("D",W-12,10);g.fillStyle="#5ec8ff";g.fillText("G",W-12,H-8);
+    for(var i=1;i<n;i++){
+      var a=p[i-1][2],b=p[i][2];g.fillStyle=(a+b)>=0?"rgba(255,138,76,.45)":"rgba(94,200,255,.45)";
+      g.beginPath();g.moveTo(X(i-1),y0);g.lineTo(X(i-1),Y(a));g.lineTo(X(i),Y(b));g.lineTo(X(i),y0);g.closePath();g.fill();
+    }
+    g.strokeStyle="#f5f3ff";g.lineWidth=2;g.lineJoin="round";g.beginPath();p.forEach(function(q,i){i?g.lineTo(X(i),Y(q[2])):g.moveTo(X(i),Y(q[2]))});g.stroke();
+    var k=0;p.forEach(function(q,i){if(Math.abs(q[2])>Math.abs(p[k][2]))k=i});
+    var px=X(k),py=Y(p[k][2]);g.fillStyle="#fff";g.beginPath();g.arc(px,py,5,0,7);g.fill();
+    g.fillStyle="#f5f3ff";g.font="bold 13px sans-serif";g.textAlign=px>W-50?"right":"left";g.textBaseline=p[k][2]>=0?"bottom":"top";
+    g.fillText(Math.abs(p[k][2])+"\u00B0",px+(px>W-50?-8:8),py+(p[k][2]>=0?-4:4));
+  }
+  function saveFile(name,type,text){
+    var blob=new Blob([text],{type:type}),f=null;try{f=new File([blob],name,{type:type})}catch(e){}
+    if(f&&navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f]}).catch(function(){});return}
+    var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){a.remove()},800);
+  }
+  function gpx(r){
+    var x='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Angle moto" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>Sortie moto '+when(r.t0)+'</name><trkseg>';
+    var dt=r.p.length>1?(r.t1-r.t0)/(r.p.length-1):2000;
+    r.p.forEach(function(q,i){x+='<trkpt lat="'+q[0]+'" lon="'+q[1]+'"><time>'+new Date(r.t0+i*dt).toISOString()+'</time></trkpt>'});
+    return x+'</trkseg></trk></gpx>';
+  }
+  function fname(r){var d=new Date(r.t0);return"sortie-moto-"+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"-"+pad(d.getHours())+pad(d.getMinutes())}
+  function records(l){
+    if(!l.length)return"";
+    var la=0,v=0,d=0,tot=0,bc=0;
+    l.forEach(function(r){la=Math.max(la,r.mL,r.mR);v=Math.max(v,r.mV);var k=km(r);d=Math.max(d,k);tot+=k;r.c.forEach(function(c){bc=Math.max(bc,c[2])})});
+    return'<div class="rec">'+stat(Math.round(la)+"\u00B0","angle max")+stat(Math.round(v)+" km/h","vitesse max")+stat(d.toFixed(1)+" km","plus longue sortie")+stat(Math.round(bc)+"\u00B0","meilleur virage")+stat(tot.toFixed(0)+" km","total")+stat(l.length,"sorties")+'</div>';
+  }
   function av(a){return a.length?a.reduce(function(x,y){return x+y},0)/a.length:0}
   function calc(r){
     var sp=[],le=[];
@@ -393,13 +490,29 @@ html[data-theme="night"] .ov{background:#000}
     cur=r;var c=calc(r),useMap=mapOk()&&r.p.length>=2;
     $("hbody").innerHTML='<div class="hh"><button class="pill" id="hb">‹ Retour</button><h2>'+when(r.t0)+'</h2><button class="pill" id="hd" data-id="'+r.id+'">Supprimer</button></div>'+
       '<div class="grid4">'+stat(dur(c.t),"durée")+stat(c.d.toFixed(1)+" km","distance")+stat(Math.round(c.vmax)+" km/h","vitesse max")+stat(Math.round(c.vavg)+" km/h","vitesse moyenne")+stat('<span style="color:var(--r)">'+Math.round(c.lmax)+'°</span>',"inclinaison max")+stat('<span style="color:var(--l)">'+Math.round(c.lavg)+'°</span>',"inclinaison moy.")+stat('<span style="color:var(--l)">'+Math.round(r.mL)+'°</span>',"max gauche")+stat('<span style="color:var(--r)">'+Math.round(r.mR)+'°</span>',"max droite")+stat(r.c.length,"virages")+'</div>'+
-      '<div class="btns" style="margin-bottom:10px"><button id="shi">Partager l’image</button><button id="sht">Partager le texte</button></div><p class="legend" id="shn" style="margin-top:0"></p>'+
+      '<div class="btns" style="margin-bottom:10px"><button id="shi">Partager l’image</button><button id="sht">Partager le texte</button><button id="gpx">Export GPX</button></div><p class="legend" id="shn" style="margin-top:0"></p>'+
       (r.p.length>=2?'<div class="card ride"><div class="rt"><b>Départ</b><span id="pl0">'+place(r,0)+'</span></div><div class="rs"><span>'+hm(r.t0)+'</span></div></div><div class="card ride"><div class="rt"><b>Arrivée</b><span id="pl1">'+place(r,1)+'</span></div><div class="rs"><span>'+hm(r.t1)+'</span></div></div>':'')+
+      (r.p.length>=2?'<p class="legend" style="margin:0 2px 4px">Inclinaison pendant la sortie (orange : droite, bleu : gauche)</p><canvas id="chart" class="card"></canvas>':'')+
       (useMap?'<div id="dmap" class="card trailc"></div>':'<canvas id="trail" class="card trailc"></canvas>')+
       '<p class="legend">Couleur du trajet : inclinaison (gris &lt; 15°, bleu &lt; 30°, orange &lt; 45°, rouge au-delà). Pastilles : angle max de chaque virage (bleu gauche, orange droite). Point vert : départ, blanc : arrivée. Inclinaison moyenne : calculée au-dessus de 15 km/h. Vitesse moyenne : calculée en roulant (au-dessus de 5 km/h).</p>';
     if(useMap)trailMap(r);else trail(r);
+    chart(r);
     if(r.p.length>=2)geocode(r);
   }
+  $("imp").onchange=function(){
+    var fl=this.files&&this.files[0];if(!fl)return;var rd=new FileReader();
+    rd.onload=function(){
+      var msg=$("imsg");
+      try{
+        var d=JSON.parse(rd.result),inc=Array.isArray(d)?d:d.rides,l=load(),ids={},added=0;
+        l.forEach(function(r){ids[r.id]=1});
+        inc.forEach(function(r){if(r&&r.id&&Array.isArray(r.p)&&Array.isArray(r.c)&&!ids[r.id]){l.push(r);ids[r.id]=1;added++}});
+        l.sort(function(a,b){return b.t0-a.t0});save(l);list();
+        $("imsg").textContent=added+" sortie"+(added>1?"s":"")+" import\u00E9e"+(added>1?"s":"")+".";
+      }catch(e){if(msg)msg.textContent="Fichier illisible."}
+    };
+    rd.readAsText(fl);this.value="";
+  };
   $("hbtn").onclick=function(){$("hist").classList.add("open");list()};
   $("shareov").onclick=function(e){if(e.target.id==="sx")$("shareov").classList.remove("open")};
   $("hbody").onclick=function(e){
@@ -408,6 +521,9 @@ html[data-theme="night"] .ov{background:#000}
     else if(t.id==="hb")list();
     else if(t.id==="shi"&&cur)shareImage(cur);
     else if(t.id==="sht"&&cur)shareText(cur);
+    else if(t.id==="gpx"&&cur)saveFile(fname(cur)+".gpx","application/gpx+xml",gpx(cur));
+    else if(t.id==="exa"){var l0=load();if(!l0.length){$("imsg").textContent="Aucune sortie \u00E0 exporter.";return}saveFile("angle-moto-sauvegarde.json","application/json",JSON.stringify({v:1,rides:l0}))}
+    else if(t.id==="ima")$("imp").click();
     else if(t.id==="hd"){if(confirm("Supprimer cette sortie ?")){var id=t.getAttribute("data-id");save(load().filter(function(x){return String(x.id)!==id}));list()}}
     else{var c=t.closest&&t.closest(".ride");if(c)detail(c.getAttribute("data-id"))}
   };
