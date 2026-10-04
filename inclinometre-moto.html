@@ -72,7 +72,7 @@ html[data-theme="night"] #hist{background:#000}
 }
 button.sm{font-size:15px;padding:8px 6px;font-weight:500}
 button.on{background:var(--fg);color:var(--bg)}
-@media (orientation:landscape) and (max-height:520px){.btns2{grid-column:2;grid-row:5}#msg{grid-row:6!important}body{grid-template-rows:auto auto auto auto auto 1fr!important}}
+@media (orientation:landscape) and (max-height:520px){.btns2{grid-column:2;grid-row:5}#mrem{grid-column:2;grid-row:6}#msg{grid-row:7!important}body{grid-template-rows:auto auto auto auto auto auto 1fr!important}}
 .stage{position:relative}
 #map{position:absolute;inset:0;display:none;border-radius:20px;isolation:isolate;z-index:0}
 .stage.mapon{padding:0}.stage.mapon #bikewrap{display:none}.stage.mapon #map{display:block}
@@ -94,7 +94,7 @@ html[data-theme="night"] .ov{background:#000}
 body.alert .stage{box-shadow:0 0 0 4px #ff3d5a,0 0 40px rgba(255,61,90,.75)}
 body.alert #val{color:#ff3d5a}
 .rec{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
-.tools{display:flex;gap:8px;margin-bottom:12px}.tools .pill{flex:1}
+.tools{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}.tools .pill{flex:1}
 #chart{width:100%;height:170px;display:block;margin-bottom:6px}
 .dtiles{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.9) saturate(.75)}
 #nav{position:absolute;inset:0;z-index:5;pointer-events:none;display:none;flex-direction:column;justify-content:space-between;padding:10px;box-sizing:border-box}
@@ -137,6 +137,11 @@ body.alert #val{color:#ff3d5a}
 .cmp .h{color:var(--mut);font-size:14px;text-align:left}
 .cmp .w{color:#4ade80;font-weight:700}
 .pin.best{border-color:#ffd54a;box-shadow:0 0 0 3px rgba(255,213,74,.6),0 1px 4px rgba(0,0,0,.5)}
+#mrem{margin:0;text-align:center;font-size:15px;font-weight:600;border-radius:10px;padding:5px 10px}
+body.mapmode #mrem{display:none!important}
+.mi{padding:10px 14px;margin-bottom:10px}
+.bar{height:8px;border-radius:4px;background:rgba(255,255,255,.12);margin-top:6px;overflow:hidden}.bar i{display:block;height:100%}
+.inp{flex:1;min-width:0;background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;color:var(--fg);font:inherit;font-size:17px;padding:8px 10px;-webkit-user-select:text;user-select:text}
 </style>
 </head>
 <body>
@@ -173,8 +178,20 @@ body.alert #val{color:#ff3d5a}
   <button id="alt" class="sm">Alerte off</button>
   <button id="rst" class="sm">Reset max</button>
 </div>
+<p id="mrem" style="display:none"></p>
 <p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
 <div id="shareov" class="ov"></div>
+<div id="rpl" class="ov">
+  <div class="hh"><span></span><h2>Replay</h2><button class="pill" id="rx">Fermer</button></div>
+  <canvas id="rcv" class="card" style="width:100%;height:44vh;display:block"></canvas>
+  <div class="card" style="display:flex;align-items:flex-end;gap:12px;padding:10px 14px;margin-top:10px">
+    <div style="height:104px;display:flex;align-items:flex-end;border-bottom:2px solid var(--mut)"><img id="rbike" alt="" style="height:100%;width:auto;transform-origin:49.8% 100%"></div>
+    <div style="flex:1"><div style="font-size:54px;font-weight:700;line-height:1" id="rang">0&deg;</div><div class="sub" id="rside"></div></div>
+    <div style="text-align:right"><div><b id="rspd" style="font-size:40px">0</b> <small style="color:var(--mut)">km/h</small></div><div class="sub" id="rtime">0:00</div></div>
+  </div>
+  <div class="btns" style="margin-top:10px"><button id="rplay">&#9208; Pause</button><button id="rsp">&times;10</button></div>
+  <input id="rsl" type="range" min="0" max="100" step="0.01" value="0" style="width:100%;margin-top:14px">
+</div>
 <input type="file" id="imp" accept=".json,application/json" style="display:none">
 <div id="hist"><div id="hbody"></div></div>
 <script>
@@ -304,7 +321,7 @@ body.alert #val{color:#ff3d5a}
     if(ride){
       if(cs.on)endCorner();
       ride.t1=Date.now();
-      if(ride.p.length>=2){persist();openId=ride.id;$("msg").textContent="Sortie enregistrée."}
+      if(ride.p.length>=2){var k0=kmt();persist();try{localStorage.setItem("kmt",String(k0+km(ride)))}catch(e){}remind();openId=ride.id;$("msg").textContent="Sortie enregistrée."}
       else{save(load().filter(function(x){return x.id!==ride.id}));$("msg").textContent="Sortie trop courte, non enregistrée."}
       ride=null;
     }
@@ -618,6 +635,96 @@ body.alert #val{color:#ff3d5a}
     L.circleMarker(b[b.length-1],{radius:7,color:"#0b0c1e",weight:2,fillColor:"#fff",fillOpacity:1}).addTo(dm);
   }
 
+  /* ---------- entretien ---------- */
+  function kmt(){var v=null;try{v=localStorage.getItem("kmt")}catch(e){}if(v==null){var t=0;load().forEach(function(r){t+=km(r)});try{localStorage.setItem("kmt",String(t))}catch(e){}return t}return+v||0}
+  function odo(){var m=getJ("maint",null);return m?m.base+(kmt()-m.ref):null}
+  var DEF=[["Vidange moteur",6000],["Graissage chaîne",500],["Pneus",10000],["Plaquettes de frein",15000],["Liquide de frein",24000],["Révision complète",12000]];
+  function remList(){
+    var m=getJ("maint",null);if(!m)return[];var o=odo();
+    return m.items.map(function(it,i){var rem=it.doneAt+it.every-o;return{i:i,it:it,rem:rem,soon:rem<=Math.max(100,it.every*.1)}});
+  }
+  function remind(){
+    var el=$("mrem"),l=remList().filter(function(x){return x.soon}).sort(function(a,b){return a.rem-b.rem});
+    if(!l.length){el.style.display="none";return}
+    var x=l[0];el.style.display="block";
+    el.textContent="🔧 "+x.it.name+(x.rem<=0?" : "+(x.rem>-1?"à faire maintenant":"en retard de "+Math.round(-x.rem)+" km"):" dans "+Math.round(x.rem)+" km")+(l.length>1?" (+"+(l.length-1)+" autre"+(l.length>2?"s":"")+")":"");
+    el.style.background=x.rem<=0?"#ff3d5a":"#ffb703";el.style.color=x.rem<=0?"#fff":"#111";
+  }
+  function maintView(){
+    killDm();var m=getJ("maint",null),h='<div class="hh"><button class="pill" id="hb">‹ Retour</button><h2>Entretien</h2><span></span></div>';
+    if(!m){
+      h+='<p class="legend">Entre le kilométrage actuel de ta moto (celui du compteur). L’app y ajoute ensuite les kilomètres de tes sorties et te prévient quand un entretien approche.</p><div class="tools"><input id="odi" class="inp" type="number" inputmode="numeric" placeholder="ex. 18450"><button class="pill" id="ods">Enregistrer</button></div>';
+    }else{
+      var o=odo();
+      h+='<div class="card mi"><div class="rt"><b>Compteur estimé</b><span>'+Math.round(o).toLocaleString("fr-FR")+' km</span></div><div class="tools" style="margin:8px 0 0"><button class="pill" data-a="odo">Corriger</button></div></div>';
+      m.items.forEach(function(it,i){
+        var rem=it.doneAt+it.every-o,pct=Math.max(0,Math.min(1,(o-it.doneAt)/it.every)),c=rem<=0?"#ff3d5a":rem<=Math.max(100,it.every*.1)?"#ffb703":"#4ade80";
+        h+='<div class="card mi" data-i="'+i+'"><div class="rt"><b>'+esc(it.name)+'</b><span style="color:'+c+'">'+(rem<=0?(rem>-1?"à faire maintenant":"en retard de "+Math.round(-rem)+" km"):"dans "+Math.round(rem)+" km")+'</span></div><div class="bar"><i style="width:'+(pct*100).toFixed(0)+'%;background:'+c+'"></i></div><div class="rs"><span>tous les '+it.every+' km, fait à '+Math.round(it.doneAt)+' km</span></div><div class="tools" style="margin:8px 0 0"><button class="pill" data-a="done">Fait</button><button class="pill" data-a="edit">Modifier</button><button class="pill" data-a="del">Supprimer</button></div></div>';
+      });
+      h+='<div class="card mi"><div class="rt"><b>Ajouter un entretien</b></div><div class="tools" style="margin:8px 0 0"><input id="ann" class="inp" placeholder="Nom (ex. Filtre à air)"><input id="ani" class="inp" type="number" inputmode="numeric" placeholder="tous les ... km" style="max-width:130px"><button class="pill" id="adi">Ajouter</button></div></div>';
+    }
+    $("hbody").innerHTML=h;remind();
+  }
+  function maintClick(t){
+    var m=getJ("maint",null),a=t.getAttribute("data-a"),card=t.closest&&t.closest(".mi"),i=card?+card.getAttribute("data-i"):-1;
+    if(t.id==="ods"){var v=parseFloat($("odi").value);if(isNaN(v))return;setJ("maint",{base:v,ref:kmt(),items:DEF.map(function(d){return{name:d[0],every:d[1],doneAt:v}})});maintView();return}
+    if(!m)return;
+    if(a==="odo"){var q=prompt("Kilométrage actuel du compteur ?",Math.round(odo()));var n=parseFloat(q);if(!isNaN(n)){m.base=n;m.ref=kmt();setJ("maint",m)}maintView();return}
+    if(a==="done"&&i>=0){m.items[i].doneAt=odo();setJ("maint",m);maintView();return}
+    if(a==="edit"&&i>=0){
+      var it=m.items[i],e=parseFloat(prompt("Intervalle en km ?",it.every)),d=parseFloat(prompt("Fait à quel kilométrage ?",Math.round(it.doneAt)));
+      if(!isNaN(e)&&e>0)it.every=e;if(!isNaN(d))it.doneAt=d;setJ("maint",m);maintView();return;
+    }
+    if(a==="del"&&i>=0){if(confirm("Supprimer « "+m.items[i].name+" » ?")){m.items.splice(i,1);setJ("maint",m)}maintView();return}
+    if(t.id==="adi"){var nm=$("ann").value.trim(),ev=parseFloat($("ani").value);if(!nm||isNaN(ev)||ev<=0)return;m.items.push({name:nm,every:ev,doneAt:odo()});setJ("maint",m);maintView()}
+  }
+
+  /* ---------- replay ---------- */
+  var rp=null,RSP=[1,4,10,30];
+  function rpProj(r,W,H){
+    var p=r.p,la=0;p.forEach(function(q){la+=q[0]});la/=p.length;var kx=Math.cos(la*Math.PI/180),x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+    p.forEach(function(q){var x=q[1]*kx,y=-q[0];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y});
+    var pad=26,sw=Math.max(x1-x0,1e-6),sh=Math.max(y1-y0,1e-6),sc=Math.min((W-2*pad)/sw,(H-2*pad)/sh),ox=(W-sw*sc)/2,oy=(H-sh*sc)/2;
+    return function(q){return[ox+(q[1]*kx-x0)*sc,oy+(-q[0]-y0)*sc]};
+  }
+  function openReplay(r){
+    if(r.p.length<2)return;
+    rp={r:r,t:0,play:true,si:2,last:0,raf:0,W:0,H:0,X:null};
+    $("rbike").src=$("bikeimg").src;$("rsl").max=r.p.length-1;$("rsl").value=0;
+    $("rplay").textContent="⏸ Pause";$("rsp").textContent="×"+RSP[rp.si];
+    $("rpl").classList.add("open");rp.raf=requestAnimationFrame(rpTick);
+  }
+  function closeReplay(){if(rp){cancelAnimationFrame(rp.raf);rp=null}$("rpl").classList.remove("open")}
+  function rpTick(ts){
+    if(!rp)return;
+    var dt=rp.last?Math.min(.1,(ts-rp.last)/1000):0;rp.last=ts;
+    if(rp.play){rp.t+=dt*RSP[rp.si]/2;var mx=rp.r.p.length-1;if(rp.t>=mx){rp.t=mx;rp.play=false;$("rplay").textContent="↻ Rejouer"}$("rsl").value=rp.t}
+    rpDraw();rp.raf=requestAnimationFrame(rpTick);
+  }
+  function rpDraw(){
+    var cv=$("rcv"),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
+    if(rp.W!==W||rp.H!==H){rp.W=W;rp.H=H;cv.width=W*dpr;cv.height=H*dpr;rp.X=rpProj(rp.r,W,H)}
+    var g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
+    var p=rp.r.p,n=p.length,i=Math.min(n-2,Math.floor(rp.t)),u=Math.min(1,rp.t-i),X=rp.X;
+    g.lineWidth=4;g.lineCap="round";g.lineJoin="round";
+    g.strokeStyle="rgba(255,255,255,.2)";g.beginPath();p.forEach(function(q,j){var c=X(q);j?g.lineTo(c[0],c[1]):g.moveTo(c[0],c[1])});g.stroke();
+    for(var j=1;j<=i;j++){g.strokeStyle=col(Math.abs(p[j][2]));g.beginPath();var a=X(p[j-1]),b=X(p[j]);g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
+    var pa=p[i],pb=p[i+1],lat=pa[0]+(pb[0]-pa[0])*u,lon=pa[1]+(pb[1]-pa[1])*u,ang=pa[2]+(pb[2]-pa[2])*u,spd=pa[3]+(pb[3]-pa[3])*u,c=X([lat,lon]);
+    g.strokeStyle=col(Math.abs(pa[2]));g.beginPath();var a0=X(pa);g.moveTo(a0[0],a0[1]);g.lineTo(c[0],c[1]);g.stroke();
+    g.fillStyle="rgba(255,255,255,.25)";g.beginPath();g.arc(c[0],c[1],15,0,7);g.fill();
+    g.fillStyle=col(Math.abs(ang));g.strokeStyle="#fff";g.lineWidth=3;g.beginPath();g.arc(c[0],c[1],8,0,7);g.fill();g.stroke();
+    var s0=X(p[0]);g.fillStyle="#4ade80";g.beginPath();g.arc(s0[0],s0[1],6,0,7);g.fill();
+    $("rbike").style.transform="rotate("+ang.toFixed(1)+"deg)";
+    setT("rang",Math.round(Math.abs(ang))+"°");setT("rside",Math.abs(ang)<1?"droit":(ang>0?"droite":"gauche"));
+    setT("rspd",String(Math.round(spd)));
+    var sec=Math.round(rp.t*((rp.r.t1-rp.r.t0)/(n-1))/1000);setT("rtime",Math.floor(sec/60)+":"+pad(sec%60));
+  }
+  $("rx").onclick=closeReplay;
+  $("rplay").onclick=function(){if(!rp)return;if(rp.t>=rp.r.p.length-1){rp.t=0;rp.play=true}else rp.play=!rp.play;$("rplay").textContent=rp.play?"⏸ Pause":"▶ Lecture"};
+  $("rsp").onclick=function(){if(!rp)return;rp.si=(rp.si+1)%RSP.length;$("rsp").textContent="×"+RSP[rp.si]};
+  $("rsl").oninput=function(){if(!rp)return;rp.t=+this.value;if(rp.t<rp.r.p.length-1&&!rp.play&&$("rplay").textContent.indexOf("Rejouer")>=0)$("rplay").textContent="▶ Lecture"};
+  remind();
+
   /* ---------- historique ---------- */
   function pad(n){return(n<10?"0":"")+n}
   function dur(ms){var m=Math.max(1,Math.round(ms/60000)),h=Math.floor(m/60);return h?h+" h "+pad(m%60):m+" min"}
@@ -626,7 +733,7 @@ body.alert #val{color:#ff3d5a}
   function stat(a,b){return '<div class="card st"><b>'+a+'</b><span>'+b+'</span></div>'}
   function list(){
     killDm();var l=load(),h='<div class="hh"><h2>Stats</h2><button class="pill" id="hx">Fermer</button></div>';
-    h+=records(l)+'<div class="tools"><button class="pill" id="exa">Exporter tout</button><button class="pill" id="ima">Importer</button><button class="pill" id="cmpb">Comparer</button></div><p class="legend" id="imsg" style="margin-top:-6px"></p>';
+    h+=records(l)+'<div class="tools"><button class="pill" id="exa">Exporter tout</button><button class="pill" id="ima">Importer</button><button class="pill" id="cmpb">Comparer</button><button class="pill" id="mnt">Entretien</button></div><p class="legend" id="imsg" style="margin-top:-6px"></p>';
     if(!l.length)h+='<p class="empty">Aucune sortie pour l\u2019instant. Touche Démarrer pour en enregistrer une, ses stats apparaîtront ici.</p>';
     if(cmpOn)h+='<p class="legend" style="margin-top:-6px">Touche deux sorties pour les comparer.</p>';
     l.forEach(function(r){h+='<div class="card ride'+(cmpSel.indexOf(String(r.id))>=0?' sel':'')+'" data-id="'+r.id+'"><div class="rt"><b>'+when(r.t0)+'</b><span>'+dur(r.t1-r.t0)+' \u00B7 '+km(r).toFixed(1)+' km</span></div><div class="rs"><span>'+Math.round(r.mV)+' km/h max</span><span class="cl">G '+Math.round(r.mL)+'\u00B0</span><span class="cr">D '+Math.round(r.mR)+'\u00B0</span></div></div>'});
@@ -791,7 +898,7 @@ body.alert #val{color:#ff3d5a}
     $("hbody").innerHTML='<div class="hh"><button class="pill" id="hb">‹ Retour</button><h2>'+when(r.t0)+'</h2><button class="pill" id="hd" data-id="'+r.id+'">Supprimer</button></div>'+
       '<div class="grid4">'+stat(dur(c.t),"durée")+stat(c.d.toFixed(1)+" km","distance")+stat(Math.round(c.vmax)+" km/h","vitesse max")+stat(Math.round(c.vavg)+" km/h","vitesse moyenne")+stat('<span style="color:var(--r)">'+Math.round(c.lmax)+'°</span>',"inclinaison max")+stat('<span style="color:var(--l)">'+Math.round(c.lavg)+'°</span>',"inclinaison moy.")+stat('<span style="color:var(--l)">'+Math.round(r.mL)+'°</span>',"max gauche")+stat('<span style="color:var(--r)">'+Math.round(r.mR)+'°</span>',"max droite")+stat(r.c.length,"virages")+'</div>'+
       (bestOf(r)?'<p class="legend" style="margin:0 2px 8px">Meilleur virage : <b>'+bestOf(r)[2]+'\u00B0</b> \u00E0 '+(bestOf(r)[3]==="L"?"gauche":"droite")+' (marqu\u00E9 en or sur la carte)</p>':'')+
-      '<div class="btns" style="margin-bottom:10px"><button id="shi">Partager l’image</button><button id="sht">Partager le texte</button><button id="gpx">Export GPX</button></div><p class="legend" id="shn" style="margin-top:0"></p>'+
+      '<div class="btns" style="margin-bottom:10px"><button id="shi">Partager l’image</button><button id="sht">Partager le texte</button><button id="gpx">Export GPX</button></div><div class="btns" style="margin-bottom:10px"><button id="rpb">\u25B6 Replay de la sortie</button></div><p class="legend" id="shn" style="margin-top:0"></p>'+
       (r.p.length>=2?'<div class="card ride"><div class="rt"><b>Départ</b><span id="pl0">'+place(r,0)+'</span></div><div class="rs"><span>'+hm(r.t0)+'</span></div></div><div class="card ride"><div class="rt"><b>Arrivée</b><span id="pl1">'+place(r,1)+'</span></div><div class="rs"><span>'+hm(r.t1)+'</span></div></div>':'')+
       (r.p.length>=2?'<p class="legend" style="margin:0 2px 4px">Inclinaison pendant la sortie (orange : droite, bleu : gauche)</p><canvas id="chart" class="card"></canvas>':'')+
       (useMap?'<div id="dmap" class="card trailc"></div>':'<canvas id="trail" class="card trailc"></canvas>')+
@@ -822,6 +929,9 @@ body.alert #val{color:#ff3d5a}
     else if(t.id==="hb")list();
     else if(t.id==="shi"&&cur)shareImage(cur);
     else if(t.id==="sht"&&cur)shareText(cur);
+    else if(t.id==="rpb"&&cur)openReplay(cur);
+    else if(t.id==="mnt")maintView();
+    else if(t.getAttribute&&(t.getAttribute("data-a")||t.id==="ods"||t.id==="adi"))maintClick(t);
     else if(t.id==="gpx"&&cur)saveFile(fname(cur)+".gpx","application/gpx+xml",gpx(cur));
     else if(t.id==="exa"){var l0=load();if(!l0.length){$("imsg").textContent="Aucune sortie \u00E0 exporter.";return}saveFile("angle-moto-sauvegarde.json","application/json",JSON.stringify({v:1,rides:l0}))}
     else if(t.id==="ima")$("imp").click();
