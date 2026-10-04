@@ -20,6 +20,7 @@ body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:"Barl
 .row{display:flex;gap:12px;width:100%;max-width:420px}
 .box{flex:1;background:var(--card);border-radius:14px;padding:10px 14px;text-align:center}
 .box b{display:block;font-size:44px;font-variant-numeric:tabular-nums}
+#spd{font-size:56px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}#spd small{font-size:24px;color:var(--mut);font-weight:400}
 .box span{font-size:18px;color:var(--mut)}
 #bl b{color:var(--l)}#br b{color:var(--r)}
 button{font:inherit;font-size:22px;font-weight:600;border:0;border-radius:14px;padding:14px;background:var(--fg);color:var(--bg);flex:1}
@@ -41,6 +42,7 @@ button.alt{background:var(--card);color:var(--fg)}
 <div>
   <div id="val" style="text-align:center">--°</div>
   <div id="side" style="text-align:center"></div>
+  <div id="spd">-- <small>km/h</small></div>
 </div>
 <div class="row">
   <div class="box" id="bl"><span>Max gauche</span><b id="ml">0°</b></div>
@@ -82,6 +84,13 @@ button.alt{background:var(--card);color:var(--fg)}
     if(a>maxR) maxR=a; if(-a>maxL) maxL=-a;
     $("mr").textContent=Math.round(maxR)+"°"; $("ml").textContent=Math.round(maxL)+"°";
   }
+  function gps(){
+    if(!navigator.geolocation){ $("spd").innerHTML='GPS indisponible'; return }
+    navigator.geolocation.watchPosition(function(p){
+      var v=p.coords.speed; // m/s
+      $("spd").innerHTML=(v==null||v<0?'--':Math.round(v*3.6))+' <small>km/h</small>';
+    },function(){ $("spd").innerHTML='GPS refusé <small>Réglages > Confidentialité > Localisation</small>' },{enableHighAccuracy:true,maximumAge:0});
+  }
   async function start(){
     try{
       if(typeof DeviceOrientationEvent!=="undefined" && DeviceOrientationEvent.requestPermission){
@@ -91,7 +100,7 @@ button.alt{background:var(--card);color:var(--fg)}
       window.addEventListener("deviceorientation",roll);
       window.addEventListener("devicemotion",motion);
       setTimeout(function(){ if(!n&&$("dbg").textContent.indexOf("accéléromètre")<0) $("dbg").textContent="aucune donnée reçue des capteurs" },1500);
-      on=true; $("start").textContent="En marche"; $("msg").textContent="Moto droite à l’arrêt, appuie sur Zéro.";
+      gps(); on=true; $("start").textContent="En marche"; $("msg").textContent="Moto droite à l’arrêt, appuie sur Zéro.";
       try{ wl=await navigator.wakeLock.request("screen") }catch(e){}
     }catch(e){ $("msg").textContent="Capteurs indisponibles sur cette page." }
   }
