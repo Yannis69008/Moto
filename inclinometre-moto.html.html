@@ -84,6 +84,11 @@ body.mapmode .big{font-size:calc(44px*var(--k,1))}
 body.mapmode .sub{height:auto;font-size:13px}
 body.mapmode .dash .card{padding:4px 10px 6px}
 .trailc#dmap{height:min(68vh,560px)}
+.ov{display:none;position:fixed;inset:0;z-index:20;overflow:auto;background:#0d0f2e;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 20px;box-sizing:border-box}
+.ov.open{display:block}
+html[data-theme="night"] .ov{background:#000}
+.grid4 .st b{font-size:22px}
+.st b span{font-size:inherit}
 </style>
 </head>
 <body>
@@ -99,7 +104,7 @@ body.mapmode .dash .card{padding:4px 10px 6px}
 </section>
 <div class="btns">
   <button id="start">D&eacute;marrer</button>
-  <button id="hbtn">Sorties</button>
+  <button id="hbtn">Stats</button>
 </div>
 <div class="btns btns2">
   <button id="tst" class="sm">Test &agrave; l&rsquo;arr&ecirc;t</button>
@@ -108,6 +113,7 @@ body.mapmode .dash .card{padding:4px 10px 6px}
   <button id="rst" class="sm">Reset max</button>
 </div>
 <p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
+<div id="shareov" class="ov"></div>
 <div id="hist"><div id="hbody"></div></div>
 <script>
 (function(){
@@ -210,16 +216,18 @@ body.mapmode .dash .card{padding:4px 10px 6px}
     }catch(e){$("msg").textContent="Capteurs indisponibles sur cette page."}
   }
   function stop(){
+    var openId=null;
     if(gid!=null){navigator.geolocation.clearWatch(gid);gid=null}
     if(ride){
       if(cs.on)endCorner();
       ride.t1=Date.now();
-      if(ride.p.length>=2){persist();$("msg").textContent="Sortie enregistrée. Retrouve-la dans Sorties."}
+      if(ride.p.length>=2){persist();openId=ride.id;$("msg").textContent="Sortie enregistrée."}
       else{save(load().filter(function(x){return x.id!==ride.id}));$("msg").textContent="Sortie trop courte, non enregistrée."}
       ride=null;
     }
     try{wl&&wl.release&&wl.release()}catch(e){}
     on=false;frozen=true;$("start").textContent="Démarrer";draw();
+    if(openId){$("hist").classList.add("open");detail(openId)}
   }
   $("start").onclick=function(){if(test){$("msg").textContent="Quitte d'abord le mode test.";return}on?stop():start()};
   $("rst").onclick=function(){maxL=maxR=0;draw()};
@@ -270,49 +278,136 @@ body.mapmode .dash .card{padding:4px 10px 6px}
   function km(r){var d=0,p=r.p;for(var i=1;i<p.length;i++){var a=p[i-1],b=p[i],x=(b[1]-a[1])*Math.cos(a[0]*Math.PI/180),y=b[0]-a[0];d+=Math.sqrt(x*x+y*y)*111.2}return d}
   function stat(a,b){return '<div class="card st"><b>'+a+'</b><span>'+b+'</span></div>'}
   function list(){
-    killDm();var l=load(),h='<div class="hh"><h2>Sorties</h2><button class="pill" id="hx">Fermer</button></div>';
-    if(!l.length)h+='<p class="empty">Aucune sortie pour l\u2019instant. Touche Démarrer pour en enregistrer une.</p>';
+    killDm();var l=load(),h='<div class="hh"><h2>Stats</h2><button class="pill" id="hx">Fermer</button></div>';
+    if(!l.length)h+='<p class="empty">Aucune sortie pour l\u2019instant. Touche Démarrer pour en enregistrer une, ses stats apparaîtront ici.</p>';
     l.forEach(function(r){h+='<div class="card ride" data-id="'+r.id+'"><div class="rt"><b>'+when(r.t0)+'</b><span>'+dur(r.t1-r.t0)+' \u00B7 '+km(r).toFixed(1)+' km</span></div><div class="rs"><span>'+Math.round(r.mV)+' km/h max</span><span class="cl">G '+Math.round(r.mL)+'\u00B0</span><span class="cr">D '+Math.round(r.mR)+'\u00B0</span></div></div>'});
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":"#ff3d5a"}
-  function trail(r){
-    var cv=$("trail"),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
-    cv.width=W*dpr;cv.height=H*dpr;var g=cv.getContext("2d");g.scale(dpr,dpr);
+  function drawTrailOn(g,W,H,r,o){
     var p=r.p;
     if(p.length<2){g.fillStyle="#a9a4cf";g.font="16px sans-serif";g.fillText("Pas assez de points GPS",16,30);return}
     var la=0;p.forEach(function(q){la+=q[0]});la/=p.length;var kx=Math.cos(la*Math.PI/180);
     var x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
     p.forEach(function(q){var x=q[1]*kx,y=-q[0];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y});
-    var pad=28,sw=Math.max(x1-x0,1e-6),sh=Math.max(y1-y0,1e-6),sc=Math.min((W-2*pad)/sw,(H-2*pad)/sh),ox=(W-sw*sc)/2,oy=(H-sh*sc)/2;
+    var sw=Math.max(x1-x0,1e-6),sh=Math.max(y1-y0,1e-6),sc=Math.min((W-2*o.pad)/sw,(H-2*o.pad)/sh),ox=(W-sw*sc)/2,oy=(H-sh*sc)/2;
     var X=function(lon){return ox+(lon*kx-x0)*sc},Y=function(lat){return oy+(-lat-y0)*sc};
-    g.lineWidth=4;g.lineCap="round";g.lineJoin="round";
+    g.lineWidth=o.lw;g.lineCap="round";g.lineJoin="round";
     for(var i=1;i<p.length;i++){g.strokeStyle=col(Math.abs(p[i][2]));g.beginPath();g.moveTo(X(p[i-1][1]),Y(p[i-1][0]));g.lineTo(X(p[i][1]),Y(p[i][0]));g.stroke()}
     var placed=[];
     r.c.slice().sort(function(a,b){return b[2]-a[2]}).forEach(function(c){
       if(c[2]<25)return;var x=X(c[1]),y=Y(c[0]);
-      if(placed.some(function(o){return Math.hypot(o[0]-x,o[1]-y)<28}))return;placed.push([x,y]);
-      g.fillStyle=c[3]==="L"?"#5ec8ff":"#ff8a4c";g.beginPath();g.arc(x,y,13,0,7);g.fill();
-      g.fillStyle="#0b0c1e";g.font="bold 11px sans-serif";g.textAlign="center";g.textBaseline="middle";g.fillText(c[2]+"\u00B0",x,y+.5);
+      if(placed.some(function(q){return Math.hypot(q[0]-x,q[1]-y)<o.rad*2.2}))return;placed.push([x,y]);
+      g.fillStyle=c[3]==="L"?"#5ec8ff":"#ff8a4c";g.beginPath();g.arc(x,y,o.rad,0,7);g.fill();
+      g.fillStyle="#0b0c1e";g.font="bold "+o.fs+"px sans-serif";g.textAlign="center";g.textBaseline="middle";g.fillText(c[2]+"°",x,y+.5);
     });
     var a=p[0],b=p[p.length-1];
-    g.fillStyle="#4ade80";g.beginPath();g.arc(X(a[1]),Y(a[0]),6,0,7);g.fill();
-    g.fillStyle="#fff";g.beginPath();g.arc(X(b[1]),Y(b[0]),6,0,7);g.fill();
+    g.fillStyle="#4ade80";g.beginPath();g.arc(X(a[1]),Y(a[0]),o.dot,0,7);g.fill();
+    g.fillStyle="#fff";g.beginPath();g.arc(X(b[1]),Y(b[0]),o.dot,0,7);g.fill();
+  }
+  function trail(r){
+    var cv=$("trail"),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+    cv.width=W*dpr;cv.height=H*dpr;var g=cv.getContext("2d");g.scale(dpr,dpr);
+    drawTrailOn(g,W,H,r,{pad:28,lw:4,rad:13,fs:11,dot:6});
+  }
+
+  /* ---------- stats et partage ---------- */
+  var cur=null;
+  function av(a){return a.length?a.reduce(function(x,y){return x+y},0)/a.length:0}
+  function calc(r){
+    var sp=[],le=[];
+    r.p.forEach(function(q){if(q[3]>=5)sp.push(q[3]);if(q[3]>=MIN)le.push(Math.abs(q[2]))});
+    return{d:km(r),t:r.t1-r.t0,vmax:r.mV,vavg:av(sp),lmax:Math.max(r.mL,r.mR),lavg:av(le)};
+  }
+  function dlong(t){var d=new Date(t).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});return d.charAt(0).toUpperCase()+d.slice(1)}
+  function hm(t){return new Date(t).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}
+  function place(r,i){var q=i?r.p[r.p.length-1]:r.p[0];return(i?r.n1:r.n0)||(q[0].toFixed(4)+", "+q[1].toFixed(4))}
+  function geocode(r){
+    [0,1].forEach(function(i){
+      if(i?r.n1:r.n0)return;var q=i?r.p[r.p.length-1]:r.p[0];
+      var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){ac&&ac.abort()},7000);
+      fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=fr&lat="+q[0]+"&lon="+q[1],ac?{signal:ac.signal}:{}).then(function(x){return x.json()}).then(function(j){
+        clearTimeout(to);var a=j.address||{},n=a.city||a.town||a.village||a.suburb||a.municipality||a.county||"";
+        if(!n)return;if(i)r.n1=n;else r.n0=n;
+        var l=load(),k=l.findIndex(function(z){return z.id===r.id});if(k>=0){l[k].n0=r.n0;l[k].n1=r.n1;save(l)}
+        var el=$("pl"+i);if(el)el.textContent=n;
+      }).catch(function(){});
+    });
+  }
+  function summary(r){
+    var c=calc(r);
+    return"Sortie moto du "+dlong(r.t0)+"\n"+hm(r.t0)+" → "+hm(r.t1)+" ("+dur(c.t)+")\nTrajet : "+c.d.toFixed(1)+" km\nDépart : "+place(r,0)+"\nArrivée : "+place(r,1)+
+      "\nVitesse max : "+Math.round(c.vmax)+" km/h (moyenne "+Math.round(c.vavg)+" km/h)\nInclinaison max : "+Math.round(c.lmax)+"° (moyenne "+Math.round(c.lavg)+"°)\nMax gauche "+Math.round(r.mL)+"°, max droite "+Math.round(r.mR)+"°, "+r.c.length+" virages";
+  }
+  function rr(g,x,y,w,h,k){g.beginPath();g.moveTo(x+k,y);g.arcTo(x+w,y,x+w,y+h,k);g.arcTo(x+w,y+h,x,y+h,k);g.arcTo(x,y+h,x,y,k);g.arcTo(x,y,x+w,y,k);g.closePath()}
+  function fit(g,t,w){while(t.length>3&&g.measureText(t).width>w)t=t.slice(0,-2);return t}
+  function cardCanvas(r){
+    var c=calc(r),cv=document.createElement("canvas");cv.width=1080;cv.height=1500;var g=cv.getContext("2d");
+    var F='"Barlow Condensed","Arial Narrow",Arial,sans-serif';
+    var gr=g.createLinearGradient(0,0,0,1500);gr.addColorStop(0,"#090b2b");gr.addColorStop(.55,"#17124a");gr.addColorStop(1,"#2c1457");g.fillStyle=gr;g.fillRect(0,0,1080,1500);
+    var gl=g.createRadialGradient(540,1500,0,540,1500,760);gl.addColorStop(0,"rgba(163,36,111,.65)");gl.addColorStop(1,"rgba(163,36,111,0)");g.fillStyle=gl;g.fillRect(0,0,1080,1500);
+    g.textAlign="left";g.textBaseline="alphabetic";
+    g.fillStyle="#a9a4cf";g.font="600 36px "+F;g.fillText("Angle moto",60,86);
+    g.fillStyle="#f5f3ff";g.font="700 72px "+F;g.fillText(fit(g,dlong(r.t0),960),60,168);
+    g.fillStyle="#a9a4cf";g.font="500 40px "+F;g.fillText(hm(r.t0)+" → "+hm(r.t1)+",  "+dur(c.t),60,220);
+    rr(g,60,250,960,600,32);g.fillStyle="rgba(255,255,255,.07)";g.fill();g.strokeStyle="rgba(255,255,255,.16)";g.lineWidth=2;g.stroke();
+    g.save();rr(g,60,250,960,600,32);g.clip();g.translate(60,250);drawTrailOn(g,960,600,r,{pad:56,lw:10,rad:26,fs:22,dot:12});g.restore();
+    var cells=[[Math.round(c.vmax),"km/h","vitesse max","#f5f3ff"],[Math.round(c.vavg),"km/h","vitesse moyenne","#f5f3ff"],[c.d.toFixed(1),"km","distance","#f5f3ff"],
+               [Math.round(c.lmax),"°","inclinaison max","#ff8a4c"],[Math.round(c.lavg),"°","inclinaison moyenne","#5ec8ff"],[r.c.length,"","virages","#f5f3ff"]];
+    cells.forEach(function(k,i){
+      var x=60+(i%3)*330,y=886+Math.floor(i/3)*176;
+      rr(g,x,y,300,156,26);g.fillStyle="rgba(255,255,255,.07)";g.fill();g.strokeStyle="rgba(255,255,255,.14)";g.stroke();
+      g.textAlign="center";g.fillStyle=k[3];g.font="700 84px "+F;
+      var vw=g.measureText(String(k[0])).width;g.fillText(String(k[0]),x+150-(k[1]?18:0),y+92);
+      if(k[1]){g.fillStyle="#a9a4cf";g.font="500 34px "+F;g.textAlign="left";g.fillText(k[1],x+150-18+vw/2+8,y+92)}
+      g.textAlign="center";g.fillStyle="#a9a4cf";g.font="500 29px "+F;g.fillText(k[2],x+150,y+136);
+    });
+    g.textAlign="left";g.font="500 38px "+F;
+    g.fillStyle="#4ade80";g.fillText("Départ",60,1286);g.fillStyle="#f5f3ff";g.fillText(fit(g,hm(r.t0)+"  "+place(r,0),780),230,1286);
+    g.fillStyle="#ffffff";g.fillText("Arrivée",60,1342);g.fillStyle="#f5f3ff";g.fillText(fit(g,hm(r.t1)+"  "+place(r,1),780),230,1342);
+    g.textAlign="center";g.fillStyle="#a9a4cf";g.font="500 34px "+F;
+    g.fillText("Max gauche "+Math.round(r.mL)+"°     Max droite "+Math.round(r.mR)+"°",540,1440);
+    return cv;
+  }
+  function showImg(url){
+    var o=$("shareov");
+    o.innerHTML='<div class="hh"><span></span><h2>Ton image</h2><button class="pill" id="sx">Fermer</button></div><p class="legend" style="text-align:center">Appuie longuement sur l’image, puis Enregistrer ou Partager.</p><img alt="" src="'+url+'" style="width:100%;max-width:520px;display:block;margin:0 auto;border-radius:14px">';
+    o.classList.add("open");
+  }
+  function shareImage(r){
+    var cv=cardCanvas(r);
+    cv.toBlob(function(b){
+      var f=null;try{f=new File([b],"sortie-moto.png",{type:"image/png"})}catch(e){}
+      if(f&&navigator.canShare&&navigator.canShare({files:[f]}))navigator.share({files:[f],text:summary(r)}).catch(function(){});
+      else showImg(cv.toDataURL("image/png"));
+    },"image/png");
+  }
+  function shareText(r){
+    var t=summary(r);
+    if(navigator.share)navigator.share({text:t}).catch(function(){});
+    else if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){$("shn").textContent="Texte copié."});
+    else prompt("Copie le texte :",t);
   }
   function detail(id){
     killDm();var r=load().filter(function(x){return String(x.id)===String(id)})[0];if(!r){list();return}
-    var useMap=mapOk()&&r.p.length>=2;
-    $("hbody").innerHTML='<div class="hh"><button class="pill" id="hb">\u2039 Retour</button><h2>'+when(r.t0)+'</h2><button class="pill" id="hd" data-id="'+r.id+'">Supprimer</button></div>'+
-      '<div class="grid4">'+stat(dur(r.t1-r.t0),"durée")+stat(km(r).toFixed(1)+" km","distance")+stat(Math.round(r.mV)+" km/h","vitesse max")+stat('<span class="cl" style="font-size:24px;color:var(--l)">'+Math.round(r.mL)+'\u00B0</span>',"max gauche")+stat('<span style="font-size:24px;color:var(--r)">'+Math.round(r.mR)+'\u00B0</span>',"max droite")+stat(r.c.length,"virages")+'</div>'+
+    cur=r;var c=calc(r),useMap=mapOk()&&r.p.length>=2;
+    $("hbody").innerHTML='<div class="hh"><button class="pill" id="hb">‹ Retour</button><h2>'+when(r.t0)+'</h2><button class="pill" id="hd" data-id="'+r.id+'">Supprimer</button></div>'+
+      '<div class="grid4">'+stat(dur(c.t),"durée")+stat(c.d.toFixed(1)+" km","distance")+stat(Math.round(c.vmax)+" km/h","vitesse max")+stat(Math.round(c.vavg)+" km/h","vitesse moyenne")+stat('<span style="color:var(--r)">'+Math.round(c.lmax)+'°</span>',"inclinaison max")+stat('<span style="color:var(--l)">'+Math.round(c.lavg)+'°</span>',"inclinaison moy.")+stat('<span style="color:var(--l)">'+Math.round(r.mL)+'°</span>',"max gauche")+stat('<span style="color:var(--r)">'+Math.round(r.mR)+'°</span>',"max droite")+stat(r.c.length,"virages")+'</div>'+
+      '<div class="btns" style="margin-bottom:10px"><button id="shi">Partager l’image</button><button id="sht">Partager le texte</button></div><p class="legend" id="shn" style="margin-top:0"></p>'+
+      (r.p.length>=2?'<div class="card ride"><div class="rt"><b>Départ</b><span id="pl0">'+place(r,0)+'</span></div><div class="rs"><span>'+hm(r.t0)+'</span></div></div><div class="card ride"><div class="rt"><b>Arrivée</b><span id="pl1">'+place(r,1)+'</span></div><div class="rs"><span>'+hm(r.t1)+'</span></div></div>':'')+
       (useMap?'<div id="dmap" class="card trailc"></div>':'<canvas id="trail" class="card trailc"></canvas>')+
-      '<p class="legend">Couleur du trajet : inclinaison (gris &lt; 15\u00B0, bleu &lt; 30\u00B0, orange &lt; 45\u00B0, rouge au-delà). Pastilles : angle max de chaque virage (bleu gauche, orange droite). Point vert : départ, blanc : arrivée.</p>';
+      '<p class="legend">Couleur du trajet : inclinaison (gris &lt; 15°, bleu &lt; 30°, orange &lt; 45°, rouge au-delà). Pastilles : angle max de chaque virage (bleu gauche, orange droite). Point vert : départ, blanc : arrivée. Inclinaison moyenne : calculée au-dessus de 15 km/h. Vitesse moyenne : calculée en roulant (au-dessus de 5 km/h).</p>';
     if(useMap)trailMap(r);else trail(r);
+    if(r.p.length>=2)geocode(r);
   }
   $("hbtn").onclick=function(){$("hist").classList.add("open");list()};
+  $("shareov").onclick=function(e){if(e.target.id==="sx")$("shareov").classList.remove("open")};
   $("hbody").onclick=function(e){
     var t=e.target;
     if(t.id==="hx"){killDm();$("hist").classList.remove("open")}
     else if(t.id==="hb")list();
+    else if(t.id==="shi"&&cur)shareImage(cur);
+    else if(t.id==="sht"&&cur)shareText(cur);
     else if(t.id==="hd"){if(confirm("Supprimer cette sortie ?")){var id=t.getAttribute("data-id");save(load().filter(function(x){return String(x.id)!==id}));list()}}
     else{var c=t.closest&&t.closest(".ride");if(c)detail(c.getAttribute("data-id"))}
   };
