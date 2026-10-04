@@ -168,9 +168,7 @@ body.alert #val{color:#ff3d5a}
   <button id="hbtn">Stats</button>
 </div>
 <div class="btns btns2">
-  <button id="tst" class="sm">Test &agrave; l&rsquo;arr&ecirc;t</button>
   <button id="dem" class="sm">D&eacute;mo</button>
-  <button id="zer" class="sm" style="display:none">Z&eacute;ro</button>
   <button id="sns" class="sm">Sens</button>
   <button id="alt" class="sm">Alerte off</button>
   <button id="rst" class="sm">Reset max</button>
@@ -289,15 +287,6 @@ body.alert #val{color:#ff3d5a}
       return true;
     }catch(e){$("msg").textContent="Capteurs indisponibles sur cette page.";return false}
   }
-  async function toggleTest(){
-    if(test){test=false;$("tst").classList.remove("on");$("tst").textContent="Test à l'arrêt";$("zer").style.display="none";f=0;$("msg").textContent="Mode test terminé.";draw();return}
-    if(on||demo){$("msg").textContent="Termine d'abord la sortie ou la démo en cours.";return}
-    if(!(await ensure()))return;
-    test=true;off=0;$("tst").classList.add("on");$("tst").textContent="Quitter le test";$("zer").style.display="";
-    $("msg").textContent="Mets le téléphone en place, moto droite, touche Zéro, puis penche : vérifie le côté et l'angle.";draw();
-  }
-  $("tst").onclick=toggleTest;
-  $("zer").onclick=function(){off=SG*rawv;f=0;draw()};
   $("sns").onclick=function(){SG=-SG;off=0;f=0;try{localStorage.setItem("sg",String(SG))}catch(e){}$("msg").textContent=SG===1?"Sens normal.":"Sens inversé (gauche et droite échangés).";draw()};
   async function start(){
     try{
