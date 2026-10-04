@@ -137,6 +137,9 @@ body.alert #val{color:#ff3d5a}
 .cmp .h{color:var(--mut);font-size:14px;text-align:left}
 .cmp .w{color:#4ade80;font-weight:700}
 .pin.best{border-color:#ffd54a;box-shadow:0 0 0 3px rgba(255,213,74,.6),0 1px 4px rgba(0,0,0,.5)}
+#wx{margin:0;text-align:center;font-size:15px;font-weight:600;border-radius:14px;padding:6px 10px;background:#3b82f6;color:#fff;cursor:pointer}
+body.mapmode #wx{display:none!important}
+#bkb{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mrem{margin:0;text-align:center;font-size:15px;font-weight:600;border-radius:10px;padding:5px 10px}
 body.mapmode #mrem{display:none!important}
 .mi{padding:10px 14px;margin-bottom:10px}
@@ -206,13 +209,15 @@ body.mapmode .btns button{padding:9px 8px;font-size:18px}
 body.mapmode button#start{padding:10px 8px;font-size:19px}
 body.mapmode .stage{border-radius:22px}
 body.mapmode .top{justify-content:space-between}
+#nav.srch #hud,#nav.srch #fol,#nav.srch #lim,#nav.srch #warn{display:none!important}
+#nav.srch #rmode{top:auto;bottom:26px}
 #rad{position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:30;background:#ffb703;color:#111;border-radius:16px;padding:10px 14px;font-size:22px;font-weight:700;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3);pointer-events:none;max-width:436px;margin:0 auto}
 
 
 </style>
 </head>
 <body>
-<div class="top"><button id="mapbtn" class="pill">Carte</button><p id="dbg">capteurs : en attente</p><button id="tbtn" class="pill">Nuit</button></div>
+<div class="top"><button id="bkb" class="pill">🏍 Ma moto</button><button id="mapbtn" class="pill">Carte</button><p id="dbg">capteurs : en attente</p><button id="tbtn" class="pill">Nuit</button></div>
 <section class="stage card"><div id="map"></div>
 <div id="nav">
   <div id="me"><svg viewBox="0 0 34 42" width="34" height="42"><path d="M17 2 L31 38 L17 30 L3 38 Z" fill="#4cc2ff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg></div>
@@ -241,11 +246,11 @@ body.mapmode .top{justify-content:space-between}
 </div>
 <div class="btns btns2">
   <button id="dem" class="sm">D&eacute;mo</button>
-  <button id="sns" class="sm">Sens</button><button id="ksb" class="sm">Force 100%</button><button id="clb" class="sm">Calibrer</button><button id="rdb" class="sm">Radars on</button>
+  <button id="sns" class="sm">Sens</button><button id="ksb" class="sm">Force 100%</button><button id="clb" class="sm">Calibrer</button><button id="rdb" class="sm">Radars on</button><button id="wxb" class="sm">Météo</button>
   <button id="alt" class="sm">Alerte off</button>
   <button id="rst" class="sm">Reset max</button>
 </div>
-<p id="mrem" style="display:none"></p>
+<p id="mrem" style="display:none"></p><p id="wx" style="display:none"></p>
 <div id="rad" style="display:none"></div><p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
 <div id="shareov" class="ov"></div>
 <div id="rpl" class="ov">
@@ -403,8 +408,8 @@ body.mapmode .top{justify-content:space-between}
     try{
       if(!(await ensure()))return;
       gps();
-      ride={id:Date.now(),t0:Date.now(),t1:Date.now(),mL:0,mR:0,mV:0,gA:0,gB:0,hb:0,p:[],c:[]};pv=null;gl=0;hbArm=true;cs={on:false};lastStore=0;if(live)live.setLatLngs([]);liveSegs.forEach(function(x){map&&map.removeLayer(x)});liveSegs=[];prevLL=null;
-      on=true;$("start").textContent="Terminer";$("start").classList.add("rec");
+      ride={bike:curBike,id:Date.now(),t0:Date.now(),t1:Date.now(),mL:0,mR:0,mV:0,gA:0,gB:0,hb:0,p:[],c:[]};pv=null;gl=0;hbArm=true;cs={on:false};lastStore=0;if(live)live.setLatLngs([]);liveSegs.forEach(function(x){map&&map.removeLayer(x)});liveSegs=[];prevLL=null;
+      on=true;wxLast.t=0;setTimeout(wxCheck,3000);$("start").textContent="Terminer";$("start").classList.add("rec");
       $("msg").textContent="Sortie en cours. L'angle apparaît au-dessus de "+MIN+" km/h.";
       try{wl=await navigator.wakeLock.request("screen")}catch(e){}
     }catch(e){$("msg").textContent="Capteurs indisponibles sur cette page."}
@@ -415,7 +420,7 @@ body.mapmode .top{justify-content:space-between}
     if(ride){
       if(cs.on)endCorner();
       ride.t1=Date.now();
-      if(ride.p.length>=2){var k0=kmt();persist();try{localStorage.setItem("kmt",String(k0+km(ride)))}catch(e){}remind();openId=ride.id;$("msg").textContent="Sortie enregistrée."}
+      if(ride.p.length>=2){var k0=kmt();persist();try{localStorage.setItem(bkey("kmt"),String(k0+km(ride)))}catch(e){}remind();openId=ride.id;$("msg").textContent="Sortie enregistrée."}
       else{save(load().filter(function(x){return x.id!==ride.id}));$("msg").textContent="Sortie trop courte, non enregistrée."}
       ride=null;
     }
@@ -509,6 +514,7 @@ body.mapmode .top{justify-content:space-between}
   }
   $("rdb").onclick=function(){radOn=!radOn;try{localStorage.setItem("rad",radOn?"1":"0")}catch(e){}radLabel();if(!radOn)radToast("");$("msg").textContent=radOn?"Alertes zones de danger activ\u00E9es : bip et message quand tu approches d\u2019un radar fixe connu d\u2019OpenStreetMap (internet requis, tous les radars ne sont pas r\u00E9pertori\u00E9s).":"Alertes zones de danger d\u00E9sactiv\u00E9es."};
   radLabel();
+  try{new MutationObserver(function(){$("nav").classList.toggle("srch",$("res").childNodes.length>0)}).observe($("res"),{childList:true})}catch(e){}
   function ksLabel(){$("ksb").textContent="Force "+Math.round(KS*100)+"%"}
   $("ksb").onclick=function(){var i=0;KSL.forEach(function(x,j){if(Math.abs(x-KS)<.01)i=j});KS=KSL[(i+1)%KSL.length];ksLabel();try{localStorage.setItem('ks2',String(KS))}catch(e){}$("msg").textContent="Force "+Math.round(KS*100)+"% : l\u2019angle affich\u00E9 est multipli\u00E9 par "+KS+" (en plus de la r\u00E9duction automatique sous 45 km/h).";};
   ksLabel();
@@ -632,7 +638,7 @@ body.mapmode .top{justify-content:space-between}
   function qp(){
     if($("dest").value.trim())return;
     var f=getJ("favs",{}),rc=getJ("recents",[]),h="";
-    [["home","Maison"],["work","Travail"]].forEach(function(k){var x=f[k[0]];h+=x?row(k[1],x.n,x.lat,x.lon):'<div class="rr" style="color:#a9a4cf">'+k[1]+' : cherche une adresse puis touche « '+k[1]+' »</div>'});
+    [["home","Maison"],["work","Travail"]].forEach(function(k){var x=f[k[0]];h+=x?row(k[1],x.n,x.lat,x.lon):'<div class="rr" style="color:var(--mut)">'+k[1]+' : cherche une adresse puis touche « '+k[1]+' »</div>'});
     rc.forEach(function(x){h+=row(x.n,"Récent",x.lat,x.lon)});
     $("res").innerHTML=h;
   }
@@ -799,6 +805,25 @@ body.mapmode .top{justify-content:space-between}
   }
 
 
+
+  /* ---------- plusieurs motos ---------- */
+  var curBike="b1";
+  try{curBike=localStorage.getItem("bike")||"b1"}catch(e){}
+  function bikes(){var b=getJ("bikes",null);if(!b||!b.length)b=[{id:"b1",name:"Ma moto"}];return b}
+  function bkey(k){return curBike==="b1"?k:k+"_"+curBike}
+  function loadB(){return load().filter(function(r){return(r.bike||"b1")===curBike})}
+  function bikeName(){var b=bikes().filter(function(x){return x.id===curBike})[0];return b?b.name:"Ma moto"}
+  function bikeLabel(){var n=bikeName();$("bkb").textContent="\uD83C\uDFCD "+(n.length>11?n.slice(0,10)+"\u2026":n)}
+  function bikeSet(id){curBike=id;try{localStorage.setItem("bike",id)}catch(e){}bikeLabel();remind();if($("hist").classList.contains("open"))list()}
+  $("bkb").onclick=function(){
+    if(on){$("msg").textContent="Termine d\u2019abord la sortie en cours pour changer de moto.";return}
+    var b=bikes(),m="Ta moto actuelle : "+bikeName()+"\n\nChoisis :\n"+b.map(function(x,i){return(i+1)+" = "+x.name}).join("\n")+"\n0 = ajouter une moto\nr = renommer la moto actuelle",a=prompt(m,"");
+    if(a==null)return;a=a.trim().toLowerCase();
+    if(a==="0"){var n=prompt("Nom de la nouvelle moto ?","");if(n&&n.trim()){var id="b"+Date.now();b.push({id:id,name:n.trim().slice(0,24)});setJ("bikes",b);bikeSet(id)}}
+    else if(a==="r"){var n2=prompt("Nouveau nom ?",bikeName());if(n2&&n2.trim()){b.forEach(function(x){if(x.id===curBike)x.name=n2.trim().slice(0,24)});setJ("bikes",b);bikeLabel()}}
+    else{var i=parseInt(a,10)-1;if(b[i])bikeSet(b[i].id)}
+  };
+  bikeLabel();
   /* ---------- sauvegarde ---------- */
   function bkDue(){
     var l=load();if(!l.length)return"";
@@ -809,14 +834,100 @@ body.mapmode .top{justify-content:space-between}
     return"";
   }
   function bkCard(l){var m=bkDue();return m?'<div class="card mi" style="border-color:#ffb703"><div class="rt"><b>\uD83D\uDCBE Pense \u00E0 sauvegarder</b></div><div class="rs"><span>'+m+' Touche Sauvegarder, puis Enregistrer dans Fichiers (iCloud Drive).</span></div></div>':""}
-  function doBackup(){var l0=load();if(!l0.length)return false;saveFile("angle-moto-sauvegarde.json","application/json",JSON.stringify({v:1,rides:l0,maint:getJ("maint",null)}));try{localStorage.setItem("lbk",String(Date.now()));localStorage.setItem("lbn",String(l0.length))}catch(e){}return true}
+  function doBackup(){var l0=load();if(!l0.length)return false;saveFile("angle-moto-sauvegarde.json","application/json",JSON.stringify({v:1,rides:l0,bikes:bikes(),maints:bikes().map(function(b){return getJ(b.id==="b1"?"maint":"maint_"+b.id,null)}),fuel:bikes().map(function(b){return getJ(b.id==="b1"?"fuel":"fuel_"+b.id,[])})}));try{localStorage.setItem("lbk",String(Date.now()));localStorage.setItem("lbn",String(l0.length))}catch(e){}return true}
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+
+  /* ---------- carburant et coût ---------- */
+  function fuelList(){return getJ(bkey("fuel"),[]).slice().sort(function(a,b){return a.km-b.km})}
+  function nf(x,d){return x.toFixed(d).replace(".",",")}
+  function fuelStats(){
+    var a=fuelList();if(a.length<2)return null;
+    var l=0,e=0;for(var i=1;i<a.length;i++)l+=a[i].l;
+    var dk=a[a.length-1].km-a[0].km;if(dk<=0)return null;
+    a.forEach(function(x){e+=x.e});var tl=0;a.forEach(function(x){tl+=x.l});
+    return{c:l/dk*100,p:e/tl}
+  }
+  function rideCost(r){var fs=fuelStats();if(!fs)return null;var d=km(r),L=d*fs.c/100;return{l:L,e:L*fs.p,c:fs.c}}
+  function fuelView(){
+    killDm();var fs=fuelStats(),a=fuelList(),now=new Date(),h='<div class="hh"><button class="pill" id="hb">‹ Retour</button><h2>Carburant</h2><span></span></div>';
+    h+='<div class="card mi"><div class="rt"><b>Consommation</b><span>'+(fs?nf(fs.c,1)+' L/100 km':'--')+'</span></div><div class="rs"><span>Prix moyen : '+(fs?nf(fs.p,2)+' €/L':'--')+'</span></div>'+(fs?'':'<p class="legend" style="margin:6px 0 0">Ajoute au moins 2 pleins (réservoir rempli à chaque fois) pour calculer ta consommation et le coût de tes sorties.</p>')+'</div>';
+    var mk0=new Date(now.getFullYear(),now.getMonth(),1).getTime(),kmM=0,spent=0;
+    loadB().forEach(function(x){if(x.t0>=mk0)kmM+=km(x)});a.forEach(function(x){if(x.t>=mk0)spent+=x.e});
+    h+='<div class="card mi"><div class="rt"><b>Ce mois-ci</b><span>'+Math.round(kmM)+' km</span></div><div class="rs">'+(fs?'<span>Coût estimé : '+nf(kmM*fs.c/100*fs.p,2)+' €</span><span>'+nf(kmM*fs.c/100,1)+' L</span>':'')+'<span>Pleins payés : '+nf(spent,2)+' €</span></div></div>';
+    h+='<div class="card mi"><div class="rt"><b>Ajouter un plein</b></div><div class="tools" style="margin:8px 0 0"><input id="fl" class="inp" type="text" inputmode="decimal" placeholder="litres" style="max-width:90px"><input id="fe" class="inp" type="text" inputmode="decimal" placeholder="prix total €" style="max-width:110px"><input id="fk" class="inp" type="text" inputmode="decimal" placeholder="km compteur (option)" style="max-width:150px"><button class="pill" data-f="add">Ajouter</button></div></div>';
+    a.slice().reverse().forEach(function(x,i){h+='<div class="card mi"><div class="rt"><b>'+new Date(x.t).toLocaleDateString("fr-FR")+'</b><span>'+nf(x.l,2)+' L · '+nf(x.e,2)+' €</span></div><div class="rs"><span>compteur '+Math.round(x.km)+' km</span></div><div class="tools" style="margin:8px 0 0"><button class="pill" data-f="del" data-t="'+x.t+'">Supprimer</button></div></div>'});
+    $("hbody").innerHTML=h;
+  }
+  function fuelClick(t){
+    var a=t.getAttribute("data-f");
+    if(a==="add"){
+      var P=function(id){return parseFloat(String($(id).value).replace(",","."))},l=P("fl"),e=P("fe"),k=P("fk");
+      if(isNaN(l)||l<=0||isNaN(e)||e<=0)return;
+      if(isNaN(k)){var o=odo();k=o!=null?o:kmt()}
+      var arr=getJ(bkey("fuel"),[]);arr.push({t:Date.now(),l:l,e:e,km:k});setJ(bkey("fuel"),arr);fuelView();return;
+    }
+    if(a==="del"){var tt=+t.getAttribute("data-t");setJ(bkey("fuel"),getJ(bkey("fuel"),[]).filter(function(x){return x.t!==tt}));fuelView()}
+  }
+
+  /* ---------- météo ---------- */
+  var WC={0:"Ciel dégagé",1:"Plutôt dégagé",2:"Nuageux",3:"Couvert",45:"Brouillard",48:"Brouillard givrant",51:"Bruine",53:"Bruine",55:"Bruine forte",56:"Bruine verglaçante",57:"Bruine verglaçante",61:"Pluie faible",63:"Pluie",65:"Pluie forte",66:"Pluie verglaçante",67:"Pluie verglaçante",71:"Neige faible",73:"Neige",75:"Neige forte",77:"Grésil",80:"Averses",81:"Averses",82:"Fortes averses",85:"Averses de neige",86:"Averses de neige",95:"Orage",96:"Orage et grêle",99:"Orage et grêle"};
+  var wxLast={t:0};
+  function wxGet(lat,lon){
+    var u="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m&forecast_days=2&timezone=auto";
+    var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){ac&&ac.abort()},10000);
+    return fetch(u,ac?{signal:ac.signal}:{}).then(function(x){clearTimeout(to);return x.json()}).then(function(j){
+      var H=j.hourly;if(!H||!H.time)throw 0;var out=[],now=Date.now();
+      for(var i=0;i<H.time.length;i++){var t=new Date(H.time[i]).getTime();if(t+36e5<now)continue;out.push({t:t,h:H.time[i].slice(11,13),T:H.temperature_2m[i],p:H.precipitation_probability[i],mm:H.precipitation[i],c:H.weather_code[i],w:H.wind_speed_10m[i],g:H.wind_gusts_10m[i]})}
+      return out;
+    });
+  }
+  function wxRisks(a,n){
+    var out=[],seen={};a.slice(0,n).forEach(function(x){
+      if(x.c>=95&&!seen.o){seen.o=1;out.push("\u26C8 Orage vers "+x.h+" h")}
+      else if((x.p>=60&&x.mm>=0.2)&&!seen.r){seen.r=1;out.push("\u2614 Pluie probable vers "+x.h+" h ("+x.p+" %)")}
+      if(x.g>=60&&!seen.g){seen.g=1;out.push("\uD83D\uDCA8 Rafales jusqu\u2019\u00E0 "+Math.round(x.g)+" km/h vers "+x.h+" h")}
+      if(x.T<=3&&!seen.i){seen.i=1;out.push("\uD83E\uDD76 Risque de verglas ("+Math.round(x.T)+"\u00B0)")}
+    });return out;
+  }
+  function wxRows(a,n){
+    var h='<div class="card mi" style="padding:6px 10px">';
+    a.slice(0,n).forEach(function(x){h+='<div class="rt" style="font-size:17px;border-top:1px solid var(--line);padding:5px 0"><b style="width:44px">'+x.h+' h</b><span style="flex:1;color:var(--fg);font-size:16px">'+(WC[x.c]||"")+'</span><span style="text-align:right;white-space:nowrap;font-size:15px">'+Math.round(x.T)+'\u00B0 \u00B7 '+x.p+'% \u00B7 '+Math.round(x.w)+'/'+Math.round(x.g)+' km/h</span></div>'});
+    return h+'</div>';
+  }
+  function wxView(){
+    killDm();$("hist").classList.add("open");
+    var h0='<div class="hh"><button class="pill" id="hx">Fermer</button><h2>Météo</h2><span></span></div>';
+    $("hbody").innerHTML=h0+'<p class="empty">Chargement\u2026</p>';
+    var go=function(lat,lon){
+      var dst=(nav&&nav.dest&&!nav.done)?nav.dest:null;
+      Promise.all([wxGet(lat,lon),dst?wxGet(dst[0],dst[1]):Promise.resolve(null)]).then(function(R){
+        var a=R[0],rk=wxRisks(a,4),h=h0;
+        h+='<div class="card mi" style="border-color:'+(rk.length?"#ffb703":"#4ade80")+'"><div class="rt"><b>'+(rk.length?"Attention dans les 4 prochaines heures":"\u2705 Conditions correctes pour rouler")+'</b></div>'+rk.map(function(x){return'<div class="rs"><span>'+x+'</span></div>'}).join("")+'</div>';
+        h+='<p class="legend" style="margin:0 2px 6px"><b>Ici</b> \u00B7 temp\u00E9rature \u00B7 pluie \u00B7 vent/rafales</p>'+wxRows(a,10);
+        if(R[1]){var ar=new Date(Date.now()+((nav&&nav.dur)||0)*1000).getHours(),b=R[1].filter(function(x){return+x.h>=ar||x.t>Date.now()+864e5/2});h+='<p class="legend" style="margin:6px 2px"><b>\u00C0 destination</b> (arriv\u00E9e vers '+ar+' h)</p>'+wxRows(b.length?b:R[1],6)+(wxRisks(b,3).length?'<p class="legend">'+wxRisks(b,3).join(" \u00B7 ")+'</p>':"")}
+        h+='<p class="legend">Pr\u00E9visions Open-Meteo, indicatives.</p>';
+        $("hbody").innerHTML=h;
+      }).catch(function(){$("hbody").innerHTML=h0+'<p class="empty">Météo indisponible : il faut une connexion internet.</p>'});
+    };
+    if(lastLat!=null)go(lastLat,lastLon);
+    else if(navigator.geolocation)navigator.geolocation.getCurrentPosition(function(p){go(p.coords.latitude,p.coords.longitude)},function(){$("hbody").innerHTML=h0+'<p class="empty">Position indisponible : autorise la localisation.</p>'},{timeout:8000});
+  }
+  function wxCheck(){
+    if(Date.now()-wxLast.t<20*60000||lastLat==null)return;wxLast.t=Date.now();
+    wxGet(lastLat,lastLon).then(function(a){
+      var rk=wxRisks(a,3),el=$("wx");
+      if(!rk.length){el.style.display="none";return}
+      el.style.display="block";el.textContent=rk[0]+(rk.length>1?" (+"+(rk.length-1)+")":"")+" \u00B7 touche M\u00E9t\u00E9o";
+    }).catch(function(){});
+  }
+  setInterval(function(){if(on)wxCheck()},60000);
+  $("wxb").onclick=wxView;$("wx").onclick=wxView;
   /* ---------- entretien ---------- */
-  function kmt(){var v=null;try{v=localStorage.getItem("kmt")}catch(e){}if(v==null){var t=0;load().forEach(function(r){t+=km(r)});try{localStorage.setItem("kmt",String(t))}catch(e){}return t}return+v||0}
-  function odo(){var m=getJ("maint",null);return m?m.base+(kmt()-m.ref):null}
+  function kmt(){var v=null;try{v=localStorage.getItem(bkey("kmt"))}catch(e){}if(v==null){var t=0;loadB().forEach(function(r){t+=km(r)});try{localStorage.setItem(bkey("kmt"),String(t))}catch(e){}return t}return+v||0}
+  function odo(){var m=getJ(bkey("maint"),null);return m?m.base+(kmt()-m.ref):null}
   var DEF=[["Vidange moteur",6000],["Graissage chaîne",500],["Pneus",10000],["Plaquettes de frein",15000],["Liquide de frein",24000],["Révision complète",12000]];
   var MO={"Vidange moteur":12,"Pneus":60,"Liquide de frein":24,"Révision complète":12};
-  function ensureDates(m){var ch=false;m.items.forEach(function(it){if(it.dd==null){it.dd=Date.now();ch=true}if(it.months==null){it.months=MO[it.name]||0;ch=true}});if(ch)setJ("maint",m)}
+  function ensureDates(m){var ch=false;m.items.forEach(function(it){if(it.dd==null){it.dd=Date.now();ch=true}if(it.months==null){it.months=MO[it.name]||0;ch=true}});if(ch)setJ(bkey("maint"),m)}
   function info(it,o){
     var rem=it.doneAt+it.every-o,dl=null;
     if(it.months>0)dl=(it.dd+it.months*30.4375*864e5-Date.now())/864e5;
@@ -830,7 +941,7 @@ body.mapmode .top{justify-content:space-between}
     return{rem:rem,dl:dl,over:over,soon:soon,ratio:ratio,txt:txt,pct:Math.max(pk,pd)};
   }
   function remList(){
-    var m=getJ("maint",null);if(!m)return[];ensureDates(m);var o=odo();
+    var m=getJ(bkey("maint"),null);if(!m)return[];ensureDates(m);var o=odo();
     return m.items.map(function(it,i){var x=info(it,o);x.i=i;x.it=it;return x});
   }
   function remind(){
@@ -841,7 +952,7 @@ body.mapmode .top{justify-content:space-between}
     el.style.background=x.over?"#ff3d5a":"#ffb703";el.style.color=x.over?"#fff":"#111";
   }
   function maintView(){
-    killDm();var m=getJ("maint",null),h='<div class="hh"><button class="pill" id="hb">‹ Retour</button><h2>Entretien</h2><span></span></div>';
+    killDm();var m=getJ(bkey("maint"),null),h='<div class="hh"><button class="pill" id="hb">‹ Retour</button><h2>Entretien</h2><span></span></div>';
     if(!m){
       h+='<p class="legend">Entre le kilométrage actuel de ta moto (celui du compteur). L’app y ajoute ensuite les kilomètres de tes sorties et te prévient quand un entretien approche.</p><div class="tools"><input id="odi" class="inp" type="number" inputmode="numeric" placeholder="ex. 18450"><button class="pill" id="ods">Enregistrer</button></div>';
     }else{
@@ -857,17 +968,17 @@ body.mapmode .top{justify-content:space-between}
     $("hbody").innerHTML=h;remind();
   }
   function maintClick(t){
-    var m=getJ("maint",null),a=t.getAttribute("data-a"),card=t.closest&&t.closest(".mi"),i=card?+card.getAttribute("data-i"):-1;
-    if(t.id==="ods"){var v=parseFloat($("odi").value);if(isNaN(v))return;setJ("maint",{base:v,ref:kmt(),items:DEF.map(function(d){return{name:d[0],every:d[1],doneAt:v,months:MO[d[0]]||0,dd:Date.now()}})});maintView();return}
+    var m=getJ(bkey("maint"),null),a=t.getAttribute("data-a"),card=t.closest&&t.closest(".mi"),i=card?+card.getAttribute("data-i"):-1;
+    if(t.id==="ods"){var v=parseFloat($("odi").value);if(isNaN(v))return;setJ(bkey("maint"),{base:v,ref:kmt(),items:DEF.map(function(d){return{name:d[0],every:d[1],doneAt:v,months:MO[d[0]]||0,dd:Date.now()}})});maintView();return}
     if(!m)return;
-    if(a==="odo"){var q=prompt("Kilométrage actuel du compteur ?",Math.round(odo()));var n=parseFloat(q);if(!isNaN(n)){m.base=n;m.ref=kmt();setJ("maint",m)}maintView();return}
-    if(a==="done"&&i>=0){m.items[i].doneAt=odo();m.items[i].dd=Date.now();setJ("maint",m);maintView();return}
+    if(a==="odo"){var q=prompt("Kilométrage actuel du compteur ?",Math.round(odo()));var n=parseFloat(q);if(!isNaN(n)){m.base=n;m.ref=kmt();setJ(bkey("maint"),m)}maintView();return}
+    if(a==="done"&&i>=0){m.items[i].doneAt=odo();m.items[i].dd=Date.now();setJ(bkey("maint"),m);maintView();return}
     if(a==="edit"&&i>=0){
       var it=m.items[i],e=parseFloat(prompt("Intervalle en km ?",it.every)),d=parseFloat(prompt("Fait à quel kilométrage ?",Math.round(it.doneAt)));
-      var mo2=parseFloat(prompt("Intervalle en mois ? (0 = aucun)",it.months||0));if(!isNaN(e)&&e>0)it.every=e;if(!isNaN(d))it.doneAt=d;if(!isNaN(mo2)&&mo2>=0)it.months=mo2;setJ("maint",m);maintView();return;
+      var mo2=parseFloat(prompt("Intervalle en mois ? (0 = aucun)",it.months||0));if(!isNaN(e)&&e>0)it.every=e;if(!isNaN(d))it.doneAt=d;if(!isNaN(mo2)&&mo2>=0)it.months=mo2;setJ(bkey("maint"),m);maintView();return;
     }
-    if(a==="del"&&i>=0){if(confirm("Supprimer « "+m.items[i].name+" » ?")){m.items.splice(i,1);setJ("maint",m)}maintView();return}
-    if(t.id==="adi"){var nm=$("ann").value.trim(),ev=parseFloat($("ani").value);if(!nm||isNaN(ev)||ev<=0)return;var mo=parseFloat($("anm").value);m.items.push({name:nm,every:ev,doneAt:odo(),months:(mo>0?mo:0),dd:Date.now()});setJ("maint",m);maintView()}
+    if(a==="del"&&i>=0){if(confirm("Supprimer « "+m.items[i].name+" » ?")){m.items.splice(i,1);setJ(bkey("maint"),m)}maintView();return}
+    if(t.id==="adi"){var nm=$("ann").value.trim(),ev=parseFloat($("ani").value);if(!nm||isNaN(ev)||ev<=0)return;var mo=parseFloat($("anm").value);m.items.push({name:nm,every:ev,doneAt:odo(),months:(mo>0?mo:0),dd:Date.now()});setJ(bkey("maint"),m);maintView()}
   }
 
   /* ---------- replay ---------- */
@@ -923,8 +1034,8 @@ body.mapmode .top{justify-content:space-between}
   function km(r){var d=0,p=r.p;for(var i=1;i<p.length;i++){var a=p[i-1],b=p[i],x=(b[1]-a[1])*Math.cos(a[0]*Math.PI/180),y=b[0]-a[0];d+=Math.sqrt(x*x+y*y)*111.2}return d}
   function stat(a,b){return '<div class="card st"><b>'+a+'</b><span>'+b+'</span></div>'}
   function list(){
-    killDm();var l=load(),h='<div class="hh"><h2>Stats</h2><button class="pill" id="hx">Fermer</button></div>';
-    h+=records(l)+topHtml(l)+bkCard(l)+'<div class="tools"><button class="pill" id="exa">Sauvegarder</button><button class="pill" id="ima">Importer</button><button class="pill" id="cmpb">Comparer</button><button class="pill" id="mnt">Entretien</button></div><p class="legend" id="imsg" style="margin-top:-6px"></p>';
+    killDm();var l=loadB(),h='<div class="hh"><h2>Stats · '+esc(bikeName())+'</h2><button class="pill" id="hx">Fermer</button></div>';
+    h+=records(l)+topHtml(l)+bkCard(l)+'<div class="tools"><button class="pill" id="exa">Sauvegarder</button><button class="pill" id="ima">Importer</button><button class="pill" id="cmpb">Comparer</button><button class="pill" id="mnt">Entretien</button><button class="pill" id="fuelb">Carburant</button></div><p class="legend" id="imsg" style="margin-top:-6px"></p>';
     if(!l.length)h+='<p class="empty">Aucune sortie pour l\u2019instant. Touche Démarrer pour en enregistrer une, ses stats apparaîtront ici.</p>';
     if(cmpOn)h+='<p class="legend" style="margin-top:-6px">Touche deux sorties pour les comparer.</p>';
     l.forEach(function(r){h+='<div class="card ride'+(cmpSel.indexOf(String(r.id))>=0?' sel':'')+'" data-id="'+r.id+'"><div class="rt"><b>'+when(r.t0)+'</b><span>'+dur(r.t1-r.t0)+' \u00B7 '+km(r).toFixed(1)+' km</span></div><div class="rs"><span>'+Math.round(r.mV)+' km/h max</span><span class="cl">G '+Math.round(r.mL)+'\u00B0</span><span class="cr">D '+Math.round(r.mR)+'\u00B0</span></div></div>'});
@@ -1128,7 +1239,7 @@ body.mapmode .top{justify-content:space-between}
     killDm();var r=load().filter(function(x){return String(x.id)===String(id)})[0];if(!r){list();return}
     cur=r;var c=calc(r),useMap=mapOk()&&r.p.length>=2;
     $("hbody").innerHTML='<div class="hh"><button class="pill" id="hb">‹ Retour</button><h2>'+when(r.t0)+'</h2><button class="pill" id="hd" data-id="'+r.id+'">Supprimer</button></div>'+
-      '<div class="grid4">'+stat(dur(c.t),"durée")+stat(c.d.toFixed(1)+" km","distance")+stat(Math.round(c.vmax)+" km/h","vitesse max")+stat(Math.round(c.vavg)+" km/h","vitesse moyenne")+stat('<span style="color:var(--r)">'+Math.round(c.lmax)+'°</span>',"inclinaison max")+stat('<span style="color:var(--l)">'+Math.round(c.lavg)+'°</span>',"inclinaison moy.")+stat('<span style="color:var(--l)">'+Math.round(r.mL)+'°</span>',"max gauche")+stat('<span style="color:var(--r)">'+Math.round(r.mR)+'°</span>',"max droite")+stat(r.c.length,"virages")+(r.gB!=null?stat(String(r.gB).replace(".",",")+" g","freinage max")+stat(String(r.gA).replace(".",",")+" g","relance max")+stat(r.hb||0,"freinages forts"):"")+'</div>'+scoreCard(r,load())+
+      '<div class="grid4">'+stat(dur(c.t),"durée")+stat(c.d.toFixed(1)+" km","distance")+stat(Math.round(c.vmax)+" km/h","vitesse max")+stat(Math.round(c.vavg)+" km/h","vitesse moyenne")+stat('<span style="color:var(--r)">'+Math.round(c.lmax)+'°</span>',"inclinaison max")+stat('<span style="color:var(--l)">'+Math.round(c.lavg)+'°</span>',"inclinaison moy.")+stat('<span style="color:var(--l)">'+Math.round(r.mL)+'°</span>',"max gauche")+stat('<span style="color:var(--r)">'+Math.round(r.mR)+'°</span>',"max droite")+stat(r.c.length,"virages")+(rideCost(r)?stat(nf(rideCost(r).e,2)+" €","coût estimé"):"")+(r.gB!=null?stat(String(r.gB).replace(".",",")+" g","freinage max")+stat(String(r.gA).replace(".",",")+" g","relance max")+stat(r.hb||0,"freinages forts"):"")+'</div>'+scoreCard(r,loadB())+
       (bestOf(r)?'<p class="legend" style="margin:0 2px 8px">Meilleur virage : <b>'+bestOf(r)[2]+'\u00B0</b> \u00E0 '+(bestOf(r)[3]==="L"?"gauche":"droite")+' (marqu\u00E9 en or sur la carte)</p>':'')+
       '<div class="btns" style="margin-bottom:10px"><button id="shi">Partager l’image</button><button id="sht">Partager le texte</button><button id="gpx">Export GPX</button></div><div class="btns" style="margin-bottom:10px"><button id="rpb">\u25B6 Replay de la sortie</button></div><p class="legend" id="shn" style="margin-top:0"></p>'+
       (r.p.length>=2?'<div class="card ride"><div class="rt"><b>Départ</b><span id="pl0">'+place(r,0)+'</span></div><div class="rs"><span>'+hm(r.t0)+'</span></div></div><div class="card ride"><div class="rt"><b>Arrivée</b><span id="pl1">'+place(r,1)+'</span></div><div class="rs"><span>'+hm(r.t1)+'</span></div></div>':'')+
@@ -1163,6 +1274,8 @@ body.mapmode .top{justify-content:space-between}
     else if(t.id==="sht"&&cur)shareText(cur);
     else if(t.id==="rpb"&&cur)openReplay(cur);
     else if(t.id==="mnt")maintView();
+    else if(t.id==="fuelb")fuelView();
+    else if(t.getAttribute&&t.getAttribute("data-f"))fuelClick(t);
     else if(t.getAttribute&&(t.getAttribute("data-a")||t.id==="ods"||t.id==="adi"))maintClick(t);
     else if(t.id==="gpx"&&cur)saveFile(fname(cur)+".gpx","application/gpx+xml",gpx(cur));
     else if(t.id==="exa"){if(!doBackup()){$("imsg").textContent="Aucune sortie \u00E0 sauvegarder.";return}$("imsg").textContent="Sauvegarde pr\u00EAte : choisis Enregistrer dans Fichiers."}
