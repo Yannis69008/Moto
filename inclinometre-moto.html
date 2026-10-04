@@ -266,6 +266,17 @@ body.mapmode .gs{display:none}
 #wup{margin:0;text-align:center;font-size:16px;font-weight:700;border-radius:14px;padding:7px 10px;background:#ff8a3d;color:#fff;cursor:pointer}
 body.mapmode #wup{display:none!important}
 .tools .pill.on{background:var(--fg);color:var(--bg)}
+
+.btns2{display:none;position:fixed;left:0;right:0;bottom:0;z-index:40;max-width:460px;margin:0 auto;padding:14px 14px calc(16px + env(safe-area-inset-bottom,0px));background:var(--ovbg);border-radius:26px 26px 0 0;box-shadow:0 -12px 40px rgba(10,20,60,.28);grid-template-columns:1fr 1fr;gap:10px;flex-wrap:nowrap}
+.btns2.open{display:grid!important}
+.btns2 .sh{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-size:22px;font-weight:700}
+.btns2 button.sm{padding:16px 8px;font-size:17px;border-radius:16px;min-height:58px;flex:none}
+#tbk{display:none;position:fixed;inset:0;z-index:39;background:rgba(5,8,30,.45)}#tbk.open{display:block}
+#tlb{flex:.9;font-size:18px;font-weight:700;border-radius:20px}
+#dbg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;min-width:0}
+#mrem,#wx{font-size:13px;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gs .card{padding:3px 4px!important}.gs b{font-size:24px!important}
+.maxes .card{padding:5px 12px!important}.maxes b{font-size:26px!important}
 </style>
 </head>
 <body>
@@ -295,15 +306,15 @@ body.mapmode #wup{display:none!important}
 <section class="gs"><div class="card" id="gac"><span>Accélération</span><div><b id="gacv">0,00</b> <small>g</small></div></div><div class="card" id="gbr"><span>Freinage</span><div><b id="gbrv">0,00</b> <small>g</small></div></div><div class="card" id="glt"><span>Latéral</span><div><b id="gltv">0,00</b> <small>g</small></div></div></section>
 <div class="btns">
   <button id="start">D&eacute;marrer</button>
-  <button id="hbtn">Stats</button>
+  <button id="hbtn">Stats</button><button id="tlb">⚙ Outils</button>
 </div>
-<div class="btns btns2">
-  <button id="dem" class="sm">D&eacute;mo</button>
-  <button id="sns" class="sm">Sens</button><button id="ksb" class="sm">Force 100%</button><button id="clb" class="sm">Calibrer</button><button id="rdb" class="sm">Radars on</button><button id="wxb" class="sm">Météo</button>
-  <button id="alt" class="sm">Alerte off</button>
-  <button id="wub" class="sm">Préchauffage</button>
-  <button id="rst" class="sm">Reset max</button>
-</div>
+<div class="btns btns2" id="tools"><div class="sh"><span>Outils</span><button class="pill" id="tlx">Fermer</button></div>
+  <button id="wub" class="sm">Préchauffage</button><button id="wxb" class="sm">Météo</button>
+  <button id="rdb" class="sm">Radars on</button><button id="alt" class="sm">Alerte off</button>
+  <button id="ksb" class="sm">Force 100%</button><button id="sns" class="sm">Sens</button>
+  <button id="clb" class="sm">Calibrer</button><button id="dem" class="sm">D&eacute;mo</button>
+  <button id="rst" class="sm" style="grid-column:1/-1">Reset max</button>
+</div><div id="tbk"></div>
 <p id="mrem" style="display:none"></p><p id="wx" style="display:none"></p><p id="wup" style="display:none"></p>
 <div id="rad" style="display:none"></div><p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
 <div id="shareov" class="ov"></div>
@@ -650,7 +661,7 @@ function Bike3D(cv,MODEL){
   try{r3=Bike3D($("rbike3d"),window.BIKE_MODEL);if(r3){$("rwrap").classList.add("b3")}}catch(e){r3=null}
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(b3.mode()==="model"?"MT-09 3D":"moto 3D simple"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v53 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v54 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   if(b3){
     
@@ -1421,6 +1432,11 @@ function Bike3D(cv,MODEL){
   $("wub").onclick=wuView;
   $("wup").onclick=function(){if(WU.done){WU.done=false;WU.left=WU.d;wuSave();wuTick()}else wuView()};
   setInterval(wuTick,250);wuTick();
+  /* ---------- feuille Outils ---------- */
+  function tools(o){$("tools").classList.toggle("open",o);$("tbk").classList.toggle("open",o)}
+  $("tlb").onclick=function(){tools(true)};$("tlx").onclick=function(){tools(false)};$("tbk").onclick=function(){tools(false)};
+  ["wxb","wub","clb","dem"].forEach(function(id){$(id).addEventListener("click",function(){tools(false)})});
+
 
   $("wxb").onclick=wxView;$("wx").onclick=wxView;
   /* ---------- entretien ---------- */
@@ -1559,7 +1575,7 @@ function Bike3D(cv,MODEL){
     else h+='<div class="sec">Records</div>'+recGrid(l)+topHtml(l)+'<div class="sec">Sorties · '+l.length+'</div>';
     if(cmpOn)h+='<p class="legend" style="margin-top:-2px">Touche deux sorties pour les comparer.</p>';
     l.forEach(function(r){h+='<div class="card ride'+(cmpSel.indexOf(String(r.id))>=0?' sel':'')+'" data-id="'+r.id+'"><div class="rt"><b>'+when(r.t0)+'</b><span>'+dur(r.t1-r.t0)+' · '+km(r).toFixed(1)+' km</span></div><div class="rs"><span>'+Math.round(r.mV)+' km/h max</span><span class="cl">G '+Math.round(r.mL)+'°</span><span class="cr">D '+Math.round(r.mR)+'°</span>'+(r.gB?'<span class="gtag">frein '+gfmt(r.gB)+' g</span>':'')+(r.gL?'<span class="gtag">lat '+gfmt(r.gL)+' g</span>':'')+'</div></div>'});
-    h+='<p class="legend" style="margin-top:14px">Modèle 3D : « 2025 Yamaha MT-09 SP V4 » par VTX (sketchfab.com/VTX_car), licence CC BY-NC-SA 4.0. Modèle simplifié et recoloré. Usage non commercial. Version 53 · rendu : '+R3+'.</p>';
+    h+='<p class="legend" style="margin-top:14px">Modèle 3D : « 2025 Yamaha MT-09 SP V4 » par VTX (sketchfab.com/VTX_car), licence CC BY-NC-SA 4.0. Modèle simplifié et recoloré. Usage non commercial. Version 54 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
