@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Angle">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Angle moto</title>
+<style>
+:root{--bg:#f2f0eb;--fg:#15171a;--mut:#6b6f76;--l:#1f6feb;--r:#e5484d;--card:#e6e3dc;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1013;--fg:#f1f2f4;--mut:#8b9098;--l:#4c9aff;--r:#ff6b6f;--card:#1a1d22}}
+:root[data-theme="dark"]{--bg:#0e1013;--fg:#f1f2f4;--mut:#8b9098;--l:#4c9aff;--r:#ff6b6f;--card:#1a1d22}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:16px;box-sizing:border-box;-webkit-user-select:none;user-select:none}
+#bike{width:min(78vw,340px);height:auto}
+#val{font-size:min(30vw,150px);font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+#side{font-size:28px;color:var(--mut);height:32px}
+.row{display:flex;gap:12px;width:100%;max-width:420px}
+.box{flex:1;background:var(--card);border-radius:14px;padding:10px 14px;text-align:center}
+.box b{display:block;font-size:44px;font-variant-numeric:tabular-nums}
+#spd{font-size:56px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}#spd small{font-size:24px;color:var(--mut);font-weight:400}
+.box span{font-size:18px;color:var(--mut)}
+#bl b{color:var(--l)}#br b{color:var(--r)}
+button{font:inherit;font-size:22px;font-weight:600;border:0;border-radius:14px;padding:14px;background:var(--fg);color:var(--bg);flex:1}
+button.alt{background:var(--card);color:var(--fg)}
+#msg{font-size:18px;color:var(--mut);text-align:center;max-width:380px}
+</style>
+</head>
+<body>
+<div id="dbg" style="font-size:16px;color:var(--mut)">capteurs : en attente</div>
+<div id="msg">Fixe l’iPhone en portrait sur le guidon, écran vers toi, moto droite sur ses deux roues.</div>
+<svg id="bike" viewBox="0 0 300 190">
+  <line x1="20" y1="170" x2="280" y2="170" stroke="var(--mut)" stroke-width="2"/>
+  <g id="g" transform="rotate(0 150 170)">
+    <rect x="144" y="30" width="12" height="140" rx="6" fill="var(--fg)"/>
+    <circle cx="150" cy="30" r="9" fill="var(--fg)"/>
+    <rect x="95" y="38" width="110" height="9" rx="4.5" fill="var(--fg)"/>
+  </g>
+</svg>
+<div>
+  <div id="val" style="text-align:center">--°</div>
+  <div id="side" style="text-align:center"></div>
+  <div id="spd">-- <small>km/h</small></div>
+</div>
+<div class="row">
+  <div class="box" id="bl"><span>Max gauche</span><b id="ml">0°</b></div>
+  <div class="box" id="br"><span>Max droite</span><b id="mr">0°</b></div>
+</div>
+<div class="row">
+  <button id="start">Démarrer</button>
+  <button class="alt" id="zero">Zéro</button>
+  <button class="alt" id="rst">Reset max</button>
+</div>
+<script>
+(function(){
+  var raw=0, f=0, off=0, maxL=0, maxR=0, on=false, wl=null;
+  try{ off=parseFloat(localStorage.getItem("off"))||0 }catch(e){}
+  var $=function(i){return document.getElementById(i)};
+  var n=0;
+  function motion(e){
+    var a=e.accelerationIncludingGravity; if(!a||a.x==null||n>0) return;
+    $("dbg").textContent="mode accéléromètre x="+a.x.toFixed(1)+" y="+a.y.toFixed(1);
+    raw=Math.atan2(a.x,a.y)*180/Math.PI; // + = droite
+    f+=(raw-off-f)*0.35; draw();
+  }
+  function roll(e){
+    if(e.beta==null||e.gamma==null) return;
+    n++; $("dbg").textContent="orientation β="+e.beta.toFixed(0)+" γ="+e.gamma.toFixed(0);
+    var b=e.beta*Math.PI/180, g=e.gamma*Math.PI/180;
+    // gravité dans le repère du téléphone (portrait, debout)
+    var x=-Math.cos(b)*Math.sin(g), y=Math.sin(b);
+    raw=Math.atan2(-x,y)*180/Math.PI; // + = droite
+    if(Math.abs(raw)>100) return; // téléphone couché : ignoré
+    f+= (raw-off-f)*0.35; // lissage
+    draw();
+  }
+  function draw(){
+    var a=f, m=Math.abs(a);
+    $("val").textContent=Math.round(m)+"°";
+    $("side").textContent=m<1?"droit":(a>0?"droite":"gauche");
+    $("g").setAttribute("transform","rotate("+a.toFixed(1)+" 150 170)");
+    if(a>maxR) maxR=a; if(-a>maxL) maxL=-a;
+    $("mr").textContent=Math.round(maxR)+"°"; $("ml").textContent=Math.round(maxL)+"°";
+  }
+  function gps(){
+    if(!navigator.geolocation){ $("spd").innerHTML='GPS indisponible'; return }
+    navigator.geolocation.watchPosition(function(p){
+      var v=p.coords.speed; // m/s
+      $("spd").innerHTML=(v==null||v<0?'--':Math.round(v*3.6))+' <small>km/h</small>';
+    },function(){ $("spd").innerHTML='GPS refusé <small>Réglages > Confidentialité > Localisation</small>' },{enableHighAccuracy:true,maximumAge:0});
+  }
+  async function start(){
+    try{
+      if(typeof DeviceOrientationEvent!=="undefined" && DeviceOrientationEvent.requestPermission){
+        var r=await DeviceOrientationEvent.requestPermission();
+        if(r!=="granted"){ $("msg").textContent="Capteurs refusés. Réglages > Safari > Mouvement et orientation."; return }
+      }
+      window.addEventListener("deviceorientation",roll);
+      window.addEventListener("devicemotion",motion);
+      setTimeout(function(){ if(!n&&$("dbg").textContent.indexOf("accéléromètre")<0) $("dbg").textContent="aucune donnée reçue des capteurs" },1500);
+      gps(); on=true; $("start").textContent="En marche"; $("msg").textContent="Moto droite à l’arrêt, appuie sur Zéro.";
+      try{ wl=await navigator.wakeLock.request("screen") }catch(e){}
+    }catch(e){ $("msg").textContent="Capteurs indisponibles sur cette page." }
+  }
+  $("start").onclick=start;
+  $("zero").onclick=function(){ off=raw; try{localStorage.setItem("off",off)}catch(e){} f=0; maxL=maxR=0; draw() };
+  $("rst").onclick=function(){ maxL=maxR=0; draw() };
+  document.addEventListener("visibilitychange",async function(){
+    if(on&&document.visibilityState==="visible"){ try{ wl=await navigator.wakeLock.request("screen") }catch(e){} }
+  });
+})();
+</script>
+</body>
+</html>
