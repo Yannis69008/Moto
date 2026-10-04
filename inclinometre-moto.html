@@ -211,6 +211,7 @@ body.mapmode .stage{border-radius:22px}
 body.mapmode .top{justify-content:space-between}
 #nav.srch #hud,#nav.srch #fol,#nav.srch #lim,#nav.srch #warn{display:none!important}
 #nav.srch #rmode{top:auto;bottom:26px}
+#crv{display:none;position:absolute;left:10px;right:10px;top:10px;z-index:7;background:#ffb703;color:#111;border-radius:14px;padding:8px 12px;font-size:20px;font-weight:700;text-align:center;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 #rad{position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:30;background:#ffb703;color:#111;border-radius:16px;padding:10px 14px;font-size:22px;font-weight:700;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3);pointer-events:none;max-width:436px;margin:0 auto}
 
 
@@ -218,7 +219,7 @@ body.mapmode .top{justify-content:space-between}
 </head>
 <body>
 <div class="top"><button id="bkb" class="pill">🏍 Ma moto</button><button id="mapbtn" class="pill">Carte</button><p id="dbg">capteurs : en attente</p><button id="tbtn" class="pill">Nuit</button></div>
-<section class="stage card"><div id="map"></div>
+<section class="stage card"><div id="crv"></div><div id="map"></div>
 <div id="nav">
   <div id="me"><svg viewBox="0 0 34 42" width="34" height="42"><path d="M17 2 L31 38 L17 30 L3 38 Z" fill="#4cc2ff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg></div>
   <div id="attr">&copy; OpenStreetMap</div>
@@ -272,6 +273,7 @@ body.mapmode .top{justify-content:space-between}
   try{wOff=+localStorage.getItem('woff')||0;DL=+localStorage.getItem('dl')||3}catch(e){}
   var KS=.6,KSL=[1,.8,.6,1.2];
   try{KS=+localStorage.getItem('ks2')||.6}catch(e){}
+  function effK(k){return KS<1?KS+(1-KS)*Math.max(0,Math.min(1,(k-50)/30)):KS}
   function lowF(k){return k>=45?1:0.6+0.4*Math.max(0,(k-15)/30)}
   function dz(a){var m=Math.abs(a);if(m<=DL)return 0;if(m>=2*DL)return a;return (a<0?-1:1)*m*(m-DL)/DL}
   var MIN=15,KEY="rides",ux=0,uy=1,uz=0,haveUp=false,v=0,f=0,maxL=0,maxR=0,on=false,ready=false,frozen=true,gid=null,wl=null,ride=null,lastLat=null,lastLon=null,lastStore=0,cs={on:false},test=false,rawv=0,off=0,SG=1,lim=null,limT=0,limP=null,liveSegs=[],prevLL=null,cmpOn=false,cmpSel=[],follow=false,hT=0,hd=0,pLat=null,pLon=null,demo=false,dtimer=null,dt0=0,thr=0,armed=true,actx=null,map=null,mk=null,live=null,mapOn=false,mapFirst=false,dm=null;
@@ -313,8 +315,9 @@ body.mapmode .top{justify-content:space-between}
     frozen=v*3.6<MIN;
     if(!frozen){
       var phi=SG*Math.atan(-v*w/9.81)*180/Math.PI;
-      if(phi>70)phi=70;if(phi<-70)phi=-70;
-      phi=dz(phi*lowF(v*3.6)*KS);
+      phi=phi*lowF(v*3.6)*effK(v*3.6);
+      if(phi>75)phi=75;if(phi<-75)phi=-75;
+      phi=dz(phi);
       f+=(phi-f)*0.07;
       if(f>maxR)maxR=f;if(-f>maxL)maxL=-f;
       if(ride){if(f>ride.mR)ride.mR=f;if(-f>ride.mL)ride.mL=-f;track()}
@@ -372,7 +375,7 @@ body.mapmode .top{justify-content:space-between}
       if(hh!=null&&!isNaN(hh)&&v>1.5)hT=hh;
       else if(pLat!=null&&hav(pLat,pLon,lastLat,lastLon)>12)hT=brg(pLat,pLon,lastLat,lastLon);
       if(pLat==null||hav(pLat,pLon,lastLat,lastLon)>12){pLat=lastLat;pLon=lastLon}
-      radarStep();
+      radarStep();histStep();
       if(map){var ll=[lastLat,lastLon];mk.setLatLng(ll);
         if(follow){if(map.hasLayer(mk))map.removeLayer(mk)}else if(!map.hasLayer(mk))mk.addTo(map);
         if(mapOn){
@@ -420,7 +423,7 @@ body.mapmode .top{justify-content:space-between}
     if(ride){
       if(cs.on)endCorner();
       ride.t1=Date.now();
-      if(ride.p.length>=2){var k0=kmt();persist();try{localStorage.setItem(bkey("kmt"),String(k0+km(ride)))}catch(e){}remind();openId=ride.id;$("msg").textContent="Sortie enregistrée."}
+      if(ride.p.length>=2){var k0=kmt();persist();try{localStorage.setItem(bkey("kmt"),String(k0+km(ride)))}catch(e){}remind();openId=ride.id;histLoad();$("msg").textContent="Sortie enregistrée."}
       else{save(load().filter(function(x){return x.id!==ride.id}));$("msg").textContent="Sortie trop courte, non enregistrée."}
       ride=null;
     }
@@ -447,7 +450,7 @@ body.mapmode .top{justify-content:space-between}
     if(a>=thr){document.body.classList.add("alert");if(armed){armed=false;beep();try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}}}
     else if(a<thr-3){armed=true;document.body.classList.remove("alert")}
   }
-  var THS=[0,35,40,45,50];
+  var THS=[0,35,40,45,50,55,60];
 
   /* ---------- calibrage ---------- */
   function calLabel(){$("clb").textContent=wOff?"Calibré \u2713":"Calibrer"}
@@ -516,7 +519,7 @@ body.mapmode .top{justify-content:space-between}
   radLabel();
   try{new MutationObserver(function(){$("nav").classList.toggle("srch",$("res").childNodes.length>0)}).observe($("res"),{childList:true})}catch(e){}
   function ksLabel(){$("ksb").textContent="Force "+Math.round(KS*100)+"%"}
-  $("ksb").onclick=function(){var i=0;KSL.forEach(function(x,j){if(Math.abs(x-KS)<.01)i=j});KS=KSL[(i+1)%KSL.length];ksLabel();try{localStorage.setItem('ks2',String(KS))}catch(e){}$("msg").textContent="Force "+Math.round(KS*100)+"% : l\u2019angle affich\u00E9 est multipli\u00E9 par "+KS+" (en plus de la r\u00E9duction automatique sous 45 km/h).";};
+  $("ksb").onclick=function(){var i=0;KSL.forEach(function(x,j){if(Math.abs(x-KS)<.01)i=j});KS=KSL[(i+1)%KSL.length];ksLabel();try{localStorage.setItem('ks2',String(KS))}catch(e){}$("msg").textContent="Force "+Math.round(KS*100)+"% : l\u2019angle est multipli\u00E9 par "+KS+" \u00E0 basse vitesse. Au-del\u00E0 de 50 km/h, cette r\u00E9duction diminue, et elle dispara\u00EEt \u00E0 80 km/h (circuit, route : angles r\u00E9els).";};
   ksLabel();
   function altLabel(){$("alt").textContent=thr?"Alerte "+thr+"\u00B0":"Alerte off"}
   $("alt").onclick=function(){
@@ -546,7 +549,7 @@ body.mapmode .top{justify-content:space-between}
   /* ---------- cartes ---------- */
   function mapOk(){return typeof L!=="undefined"}
   function tiles(){return L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,className:"dtiles",attribution:"\u00A9 OpenStreetMap"})}
-  function toggleMap(){
+  function toggleMap(){setTimeout(curveRefresh,0);
     if(!mapOk()){$("msg").textContent="Carte indisponible : il faut une connexion internet.";return}
     mapOn=!mapOn;$("mapbtn").classList.toggle("on",mapOn);$("mapbtn").textContent=mapOn?"Moto":"Carte";
     document.querySelector(".stage").classList.toggle("mapon",mapOn);document.body.classList.toggle("mapmode",mapOn);
@@ -673,7 +676,7 @@ body.mapmode .top{justify-content:space-between}
   }
   function stopNav(){
     nav=null;if(routeLine){map.removeLayer(routeLine);routeLine=null}if(destMk)map.removeLayer(destMk);
-    $("ins").style.display="none";$("warn").style.display="none";
+    $("ins").style.display="none";navCT="";curveRefresh();
   }
   function ptAt(co,cum,s){
     var lo=0,hi=cum.length-1;while(hi-lo>1){var mid=(lo+hi)>>1;if(cum[mid]<=s)lo=mid;else hi=mid}
@@ -713,8 +716,8 @@ body.mapmode .top{justify-content:space-between}
     }
     nav.k=k;nav.dn=dn;
     var seg=(nav.cum[bi+1]||nav.cum[bi])-nav.cum[bi],s0=nav.cum[bi]+bu*seg,rem=Math.max(0,nav.tot-s0),dd=hav(lat,lon,nav.dest[0],nav.dest[1]);
-    var cv=curveAhead(s0),wn=$("warn");
-    if(cv&&cv.dist<300&&!nav.done){wn.style.display="block";wn.textContent="⚠ Virage serré à "+cv.dir+" dans "+fmtD(cv.dist)}else wn.style.display="none";
+    var cv=curveAhead(s0);
+    navCT=(cv&&cv.dist<300&&!nav.done)?"\u26A0 Virage serr\u00E9 \u00E0 "+cv.dir+" dans "+fmtD(cv.dist):"";curveRefresh();
     if(dd<35||(k>=st.length-1)){
       if(!nav.done){nav.done=true;setTimeout(stopNav,7000)}
       showIns("Vous êtes arrivé","","⚑","","");return;
@@ -806,6 +809,29 @@ body.mapmode .top{justify-content:space-between}
 
 
 
+
+  /* ---------- bandeau virage dangereux ---------- */
+  var navCT="",histCT="",hc=[];
+  function histLoad(){
+    var all=[],mx=0;loadB().forEach(function(r){r.c.forEach(function(c){all.push(c);if(c[2]>mx)mx=c[2]})});
+    var th=Math.max(25,mx*.75);hc=all.filter(function(c){return c[2]>=th}).map(function(c){return{lat:c[0],lon:c[1],a:c[2],s:c[3]}});
+  }
+  function curveRefresh(){
+    var t=navCT||histCT,st=document.querySelector(".stage"),mo=st&&st.classList.contains("mapon"),w=$("warn"),c=$("crv");
+    if(!t){w.style.display="none";c.style.display="none";return}
+    var el=mo?w:c,ot=mo?c:w;ot.style.display="none";el.style.display="block";if(el.textContent!==t)el.textContent=t;
+  }
+  function histStep(){
+    if(!hc.length||lastLat==null||v<4||hT==null){if(histCT){histCT="";curveRefresh()}return}
+    var maxd=Math.min(500,Math.max(200,v*10)),best=null;
+    hc.forEach(function(c){
+      var d=hav(lastLat,lastLon,c.lat,c.lon);if(d>maxd)return;
+      var b=brg(lastLat,lastLon,c.lat,c.lon),df=Math.abs(((b-hT+540)%360)-180);if(df>40)return;
+      if(!best||d<best.d)best={c:c,d:d};
+    });
+    var t=best?"\u26A0 Virage dangereux \u00E0 "+(best.c.s==="L"?"gauche":"droite")+" dans "+(Math.round(best.d/10)*10)+" m \u00B7 ton max ici : "+best.c.a+"\u00B0":"";
+    if(t!==histCT){histCT=t;curveRefresh()}
+  }
   /* ---------- plusieurs motos ---------- */
   var curBike="b1";
   try{curBike=localStorage.getItem("bike")||"b1"}catch(e){}
@@ -814,7 +840,7 @@ body.mapmode .top{justify-content:space-between}
   function loadB(){return load().filter(function(r){return(r.bike||"b1")===curBike})}
   function bikeName(){var b=bikes().filter(function(x){return x.id===curBike})[0];return b?b.name:"Ma moto"}
   function bikeLabel(){var n=bikeName();$("bkb").textContent="\uD83C\uDFCD "+(n.length>11?n.slice(0,10)+"\u2026":n)}
-  function bikeSet(id){curBike=id;try{localStorage.setItem("bike",id)}catch(e){}bikeLabel();remind();if($("hist").classList.contains("open"))list()}
+  function bikeSet(id){curBike=id;histLoad();try{localStorage.setItem("bike",id)}catch(e){}bikeLabel();remind();if($("hist").classList.contains("open"))list()}
   $("bkb").onclick=function(){
     if(on){$("msg").textContent="Termine d\u2019abord la sortie en cours pour changer de moto.";return}
     var b=bikes(),m="Ta moto actuelle : "+bikeName()+"\n\nChoisis :\n"+b.map(function(x,i){return(i+1)+" = "+x.name}).join("\n")+"\n0 = ajouter une moto\nr = renommer la moto actuelle",a=prompt(m,"");
@@ -823,7 +849,7 @@ body.mapmode .top{justify-content:space-between}
     else if(a==="r"){var n2=prompt("Nouveau nom ?",bikeName());if(n2&&n2.trim()){b.forEach(function(x){if(x.id===curBike)x.name=n2.trim().slice(0,24)});setJ("bikes",b);bikeLabel()}}
     else{var i=parseInt(a,10)-1;if(b[i])bikeSet(b[i].id)}
   };
-  bikeLabel();
+  bikeLabel();histLoad();
   /* ---------- sauvegarde ---------- */
   function bkDue(){
     var l=load();if(!l.length)return"";
@@ -1041,7 +1067,7 @@ body.mapmode .top{justify-content:space-between}
     l.forEach(function(r){h+='<div class="card ride'+(cmpSel.indexOf(String(r.id))>=0?' sel':'')+'" data-id="'+r.id+'"><div class="rt"><b>'+when(r.t0)+'</b><span>'+dur(r.t1-r.t0)+' \u00B7 '+km(r).toFixed(1)+' km</span></div><div class="rs"><span>'+Math.round(r.mV)+' km/h max</span><span class="cl">G '+Math.round(r.mL)+'\u00B0</span><span class="cr">D '+Math.round(r.mR)+'\u00B0</span></div></div>'});
     $("hbody").innerHTML=h;
   }
-  function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":"#ff3d5a"}
+  function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
   function drawTrailOn(g,W,H,r,o){
     var p=r.p;
     if(p.length<2){g.fillStyle=TC().mut;g.font="16px sans-serif";g.fillText("Pas assez de points GPS",16,30);return}
@@ -1245,7 +1271,7 @@ body.mapmode .top{justify-content:space-between}
       (r.p.length>=2?'<div class="card ride"><div class="rt"><b>Départ</b><span id="pl0">'+place(r,0)+'</span></div><div class="rs"><span>'+hm(r.t0)+'</span></div></div><div class="card ride"><div class="rt"><b>Arrivée</b><span id="pl1">'+place(r,1)+'</span></div><div class="rs"><span>'+hm(r.t1)+'</span></div></div>':'')+
       (r.p.length>=2?'<p class="legend" style="margin:0 2px 4px">Inclinaison pendant la sortie (orange : droite, bleu : gauche)</p><canvas id="chart" class="card"></canvas>':'')+
       (useMap?'<div id="dmap" class="card trailc"></div>':'<canvas id="trail" class="card trailc"></canvas>')+
-      '<p class="legend">Couleur du trajet : inclinaison (gris &lt; 15°, bleu &lt; 30°, orange &lt; 45°, rouge au-delà). Pastilles : angle max de chaque virage (bleu gauche, orange droite). Point vert : départ, blanc : arrivée. Inclinaison moyenne : calculée au-dessus de 15 km/h. Vitesse moyenne : calculée en roulant (au-dessus de 5 km/h). Note : indicative, basée sur la régularité de l\u2019angle (variations par seconde) et le nombre de freinages forts (plus de 0,25 g). G de freinage et de relance : calculés avec la vitesse GPS (1 mesure par seconde).</p>';
+      '<p class="legend">Couleur du trajet : inclinaison (gris &lt; 15°, bleu &lt; 30°, orange &lt; 45°, rouge &lt; 55°, violet au-delà). Pastilles : angle max de chaque virage (bleu gauche, orange droite). Point vert : départ, blanc : arrivée. Inclinaison moyenne : calculée au-dessus de 15 km/h. Vitesse moyenne : calculée en roulant (au-dessus de 5 km/h). Note : indicative, basée sur la régularité de l\u2019angle (variations par seconde) et le nombre de freinages forts (plus de 0,25 g). G de freinage et de relance : calculés avec la vitesse GPS (1 mesure par seconde).</p>';
     if(useMap)trailMap(r);else trail(r);
     chart(r);
     if(r.p.length>=2)geocode(r);
