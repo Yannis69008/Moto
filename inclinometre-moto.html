@@ -197,6 +197,17 @@ html[data-theme="night"] #map.night .dtiles{filter:invert(1) hue-rotate(180deg) 
 html[data-theme="night"] #attr{color:rgba(255,255,255,.75)}
 #mrem{border-radius:14px}
 .pin{border-color:#fff}
+body.mapmode .btns2,body.mapmode #dbg{display:none}
+body.mapmode{gap:6px;padding-top:8px;padding-bottom:8px}
+body.mapmode .dash{gap:6px}
+body.mapmode .dash .card{padding:2px 10px 4px;border-radius:16px}
+body.mapmode .sub{font-size:12px}
+body.mapmode .btns button{padding:9px 8px;font-size:18px}
+body.mapmode button#start{padding:10px 8px;font-size:19px}
+body.mapmode .stage{border-radius:22px}
+body.mapmode .top{justify-content:space-between}
+#rad{position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:30;background:#ffb703;color:#111;border-radius:16px;padding:10px 14px;font-size:22px;font-weight:700;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3);pointer-events:none;max-width:436px;margin:0 auto}
+
 
 </style>
 </head>
@@ -230,12 +241,12 @@ html[data-theme="night"] #attr{color:rgba(255,255,255,.75)}
 </div>
 <div class="btns btns2">
   <button id="dem" class="sm">D&eacute;mo</button>
-  <button id="sns" class="sm">Sens</button><button id="ksb" class="sm">Force 100%</button><button id="clb" class="sm">Calibrer</button>
+  <button id="sns" class="sm">Sens</button><button id="ksb" class="sm">Force 100%</button><button id="clb" class="sm">Calibrer</button><button id="rdb" class="sm">Radars on</button>
   <button id="alt" class="sm">Alerte off</button>
   <button id="rst" class="sm">Reset max</button>
 </div>
 <p id="mrem" style="display:none"></p>
-<p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
+<div id="rad" style="display:none"></div><p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
 <div id="shareov" class="ov"></div>
 <div id="rpl" class="ov">
   <div class="hh"><span></span><h2>Replay</h2><button class="pill" id="rx">Fermer</button></div>
@@ -356,6 +367,7 @@ html[data-theme="night"] #attr{color:rgba(255,255,255,.75)}
       if(hh!=null&&!isNaN(hh)&&v>1.5)hT=hh;
       else if(pLat!=null&&hav(pLat,pLon,lastLat,lastLon)>12)hT=brg(pLat,pLon,lastLat,lastLon);
       if(pLat==null||hav(pLat,pLon,lastLat,lastLon)>12){pLat=lastLat;pLon=lastLon}
+      radarStep();
       if(map){var ll=[lastLat,lastLon];mk.setLatLng(ll);
         if(follow){if(map.hasLayer(mk))map.removeLayer(mk)}else if(!map.hasLayer(mk))mk.addTo(map);
         if(mapOn){
@@ -420,9 +432,9 @@ html[data-theme="night"] #attr{color:rgba(255,255,255,.75)}
   window.addEventListener("pagehide",persist);
 
   /* ---------- alerte, démo ---------- */
-  function beep(){
+  function beep(fq){
     try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();if(actx.state==="suspended")actx.resume();
-      var o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.3;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.2)}catch(e){}
+      var o=actx.createOscillator(),g=actx.createGain();o.frequency.value=fq||880;g.gain.value=.3;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.2)}catch(e){}
   }
   function checkAlert(){
     var a=Math.abs(f);
@@ -456,6 +468,47 @@ html[data-theme="night"] #attr{color:rgba(255,255,255,.75)}
     cal={t0:Date.now(),w:[],v:0};cc.calm=null;
   };
   calLabel();
+
+  /* ---------- zones de danger (radars fixes OpenStreetMap) ---------- */
+  var rad=getJ("radc",{cx:null,cy:null,list:[]}),radOn=true,radBusy=false,radW={},radShown=0;
+  try{radOn=localStorage.getItem("rad")!=="0"}catch(e){}
+  function radLabel(){$("rdb").textContent=radOn?"Radars on":"Radars off"}
+  function radFetch(lat,lon){
+    if(radBusy||(rad.cx!=null&&hav(rad.cx,rad.cy,lat,lon)<8000))return;
+    radBusy=true;
+    var q='[out:json][timeout:20];node(around:20000,'+lat+','+lon+')["highway"="speed_camera"];out;';
+    var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){ac&&ac.abort()},15000);
+    fetch("https://overpass-api.de/api/interpreter?data="+encodeURIComponent(q),ac?{signal:ac.signal}:{}).then(function(x){clearTimeout(to);return x.json()}).then(function(j){
+      if(!j.elements)throw 0;
+      rad={cx:lat,cy:lon,list:j.elements.map(function(e){return{id:e.id,lat:e.lat,lon:e.lon,ms:(e.tags&&e.tags.maxspeed)||""}})};
+      setJ("radc",rad);
+    }).catch(function(){}).then(function(){radBusy=false});
+  }
+  function radToast(t){
+    var el=$("rad");if(!t){el.style.display="none";return}
+    el.style.display="block";if(cc.rt!==t){cc.rt=t;el.textContent=t}
+  }
+  function radarStep(){
+    if(!radOn||lastLat==null)return;
+    radFetch(lastLat,lastLon);
+    var now=Date.now(),best=null,maxd=Math.min(1000,Math.max(400,v*15));
+    if(v<3||hT==null){if(now-radShown>4000)radToast("");return}
+    rad.list.forEach(function(c){
+      var d=hav(lastLat,lastLon,c.lat,c.lon);
+      if(d>1800&&radW[c.id])delete radW[c.id];
+      if(d>maxd)return;
+      var b=brg(lastLat,lastLon,c.lat,c.lon),df=Math.abs(((b-hT+540)%360)-180);
+      if(df>45)return;
+      if(!best||d<best.d)best={c:c,d:d};
+    });
+    if(!best){if(now-radShown>4000)radToast("");return}
+    var c=best.c,d=Math.round(best.d/10)*10;
+    radShown=now;
+    radToast("\u26A0 Zone de danger dans "+d+" m"+(c.ms?" \u00B7 limite "+c.ms:""));
+    if(!radW[c.id]||now-radW[c.id]>600000){radW[c.id]=now;beep(1200);setTimeout(function(){beep(1200)},260);setTimeout(function(){beep(1200)},520)}
+  }
+  $("rdb").onclick=function(){radOn=!radOn;try{localStorage.setItem("rad",radOn?"1":"0")}catch(e){}radLabel();if(!radOn)radToast("");$("msg").textContent=radOn?"Alertes zones de danger activ\u00E9es : bip et message quand tu approches d\u2019un radar fixe connu d\u2019OpenStreetMap (internet requis, tous les radars ne sont pas r\u00E9pertori\u00E9s).":"Alertes zones de danger d\u00E9sactiv\u00E9es."};
+  radLabel();
   function ksLabel(){$("ksb").textContent="Force "+Math.round(KS*100)+"%"}
   $("ksb").onclick=function(){var i=0;KSL.forEach(function(x,j){if(Math.abs(x-KS)<.01)i=j});KS=KSL[(i+1)%KSL.length];ksLabel();try{localStorage.setItem('ks2',String(KS))}catch(e){}$("msg").textContent="Force "+Math.round(KS*100)+"% : l\u2019angle affich\u00E9 est multipli\u00E9 par "+KS+" (en plus de la r\u00E9duction automatique sous 45 km/h).";};
   ksLabel();
