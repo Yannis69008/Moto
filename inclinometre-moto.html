@@ -30,7 +30,7 @@ button.alt{background:var(--card);color:var(--fg)}
 </head>
 <body>
 <div id="dbg" style="font-size:16px;color:var(--mut)">capteurs : en attente</div>
-<div id="msg">Fixe l’iPhone en portrait sur le guidon, écran vers toi, moto droite sur ses deux roues.</div>
+<div id="msg">Fixe l’iPhone où tu veux, dans n’importe quel sens, puis touche Démarrer.</div>
 <svg id="bike" viewBox="0 0 300 190">
   <line x1="20" y1="170" x2="280" y2="170" stroke="var(--mut)" stroke-width="2"/>
   <g id="g" transform="rotate(0 150 170)">
@@ -55,57 +55,60 @@ button.alt{background:var(--card);color:var(--fg)}
 </div>
 <script>
 (function(){
-  var raw=0, f=0, off=0, maxL=0, maxR=0, on=false, wl=null;
-  try{ off=parseFloat(localStorage.getItem("off"))||0 }catch(e){}
+  var MIN=15; // km/h : en dessous, l'angle est figé
+  var ux=0,uy=1,uz=0,haveUp=false,v=0,f=0,maxL=0,maxR=0,on=false,frozen=true;
   var $=function(i){return document.getElementById(i)};
-  var n=0;
-  function motion(e){
-    var a=e.accelerationIncludingGravity; if(!a||a.x==null||n>0) return;
-    $("dbg").textContent="mode accéléromètre x="+a.x.toFixed(1)+" y="+a.y.toFixed(1);
-    raw=Math.atan2(a.x,a.y)*180/Math.PI; // + = droite
-    f+=(raw-off-f)*0.35; draw();
-  }
-  function roll(e){
+  function ori(e){
     if(e.beta==null||e.gamma==null) return;
-    n++; $("dbg").textContent="orientation β="+e.beta.toFixed(0)+" γ="+e.gamma.toFixed(0);
     var b=e.beta*Math.PI/180, g=e.gamma*Math.PI/180;
-    // gravité dans le repère du téléphone (portrait, debout)
-    var x=-Math.cos(b)*Math.sin(g), y=Math.sin(b);
-    raw=Math.atan2(-x,y)*180/Math.PI; // + = droite
-    if(Math.abs(raw)>100) return; // téléphone couché : ignoré
-    f+= (raw-off-f)*0.35; // lissage
+    ux=-Math.cos(b)*Math.sin(g); uy=Math.sin(b); uz=Math.cos(b)*Math.cos(g); haveUp=true;
+  }
+  function mot(e){
+    var r=e.rotationRate; if(!r||r.alpha==null||!haveUp) return;
+    // rotation autour de la verticale (rad/s) : + = virage à gauche
+    var w=(r.beta*ux+r.gamma*uy+r.alpha*uz)*Math.PI/180;
+    frozen=v*3.6<MIN;
+    if(!frozen){
+      var phi=Math.atan(-v*w/9.81)*180/Math.PI; // + = droite
+      if(phi>70)phi=70; if(phi<-70)phi=-70;
+      f+=(phi-f)*0.15;
+      if(f>maxR)maxR=f; if(-f>maxL)maxL=-f;
+    }
     draw();
   }
   function draw(){
-    var a=f, m=Math.abs(a);
-    $("val").textContent=Math.round(m)+"°";
-    $("side").textContent=m<1?"droit":(a>0?"droite":"gauche");
-    $("g").setAttribute("transform","rotate("+a.toFixed(1)+" 150 170)");
-    if(a>maxR) maxR=a; if(-a>maxL) maxL=-a;
-    $("mr").textContent=Math.round(maxR)+"°"; $("ml").textContent=Math.round(maxL)+"°";
+    var m=Math.abs(f);
+    $("val").textContent=Math.round(m)+"\u00B0";
+    $("side").textContent=frozen?"figé (< "+MIN+" km/h)":(m<1?"droit":(f>0?"droite":"gauche"));
+    $("g").setAttribute("transform","rotate("+f.toFixed(1)+" 150 170)");
+    $("mr").textContent=Math.round(maxR)+"\u00B0"; $("ml").textContent=Math.round(maxL)+"\u00B0";
+    $("dbg").textContent="angle calculé avec GPS + gyroscope";
   }
   function gps(){
     if(!navigator.geolocation){ $("spd").innerHTML='GPS indisponible'; return }
     navigator.geolocation.watchPosition(function(p){
-      var v=p.coords.speed; // m/s
-      $("spd").innerHTML=(v==null||v<0?'--':Math.round(v*3.6))+' <small>km/h</small>';
+      var s=p.coords.speed; v=(s==null||s<0)?0:s;
+      $("spd").innerHTML=(s==null||s<0?'--':Math.round(s*3.6))+' <small>km/h</small>';
     },function(){ $("spd").innerHTML='GPS refusé <small>Réglages > Confidentialité > Localisation</small>' },{enableHighAccuracy:true,maximumAge:0});
   }
   async function start(){
     try{
       if(typeof DeviceOrientationEvent!=="undefined" && DeviceOrientationEvent.requestPermission){
         var r=await DeviceOrientationEvent.requestPermission();
-        if(r!=="granted"){ $("msg").textContent="Capteurs refusés. Réglages > Safari > Mouvement et orientation."; return }
+        if(r!=="granted"){ $("msg").textContent="Capteurs refusés."; return }
       }
-      window.addEventListener("deviceorientation",roll);
-      window.addEventListener("devicemotion",motion);
-      setTimeout(function(){ if(!n&&$("dbg").textContent.indexOf("accéléromètre")<0) $("dbg").textContent="aucune donnée reçue des capteurs" },1500);
-      gps(); on=true; $("start").textContent="En marche"; $("msg").textContent="Moto droite à l’arrêt, appuie sur Zéro.";
+      if(typeof DeviceMotionEvent!=="undefined" && DeviceMotionEvent.requestPermission){
+        try{ await DeviceMotionEvent.requestPermission() }catch(e){}
+      }
+      window.addEventListener("deviceorientation",ori);
+      window.addEventListener("devicemotion",mot);
+      gps(); on=true; $("start").textContent="En marche";
+      $("msg").textContent="L'angle apparaît au-dessus de "+MIN+" km/h.";
       try{ wl=await navigator.wakeLock.request("screen") }catch(e){}
     }catch(e){ $("msg").textContent="Capteurs indisponibles sur cette page." }
   }
   $("start").onclick=start;
-  $("zero").onclick=function(){ off=raw; try{localStorage.setItem("off",off)}catch(e){} f=0; maxL=maxR=0; draw() };
+  $("zero").onclick=function(){ f=0; maxL=maxR=0; draw() };
   $("rst").onclick=function(){ maxL=maxR=0; draw() };
   document.addEventListener("visibilitychange",async function(){
     if(on&&document.visibilityState==="visible"){ try{ wl=await navigator.wakeLock.request("screen") }catch(e){} }
