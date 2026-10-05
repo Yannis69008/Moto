@@ -396,7 +396,7 @@ body.cmode .dash,body.cmode .gs,body.cmode .btns3,body.cmode #wup,body.cmode #mr
   <button id="wub" class="sm">Préchauffage</button><button id="wxb" class="sm">Météo</button>
   <button id="rdb" class="sm">Radars on</button><button id="alt" class="sm">Alerte off</button>
   <button id="dem" class="sm">D&eacute;mo</button><button id="rst" class="sm">Reset max</button>
-  <button id="brkb" class="sm">Pause</button><button id="rnb" class="sm">Pluie</button><button id="dimb" class="sm">Écran épuré</button><button id="balb" class="sm">Balades</button><button id="stab" class="sm">Stations</button><button id="rawb" class="sm">Données brutes</button><button id="rawx" class="sm">Exporter brutes</button><button id="voxb" class="sm">Voix : non</button><button id="rtb" class="sm">Belles routes</button><button id="cfgb" class="sm">Accueil et navigation</button><button id="tutb" class="sm">Aide / tuto</button>
+  <button id="brkb" class="sm">Pause</button><button id="rnb" class="sm">Pluie</button><button id="dimb" class="sm">Écran épuré</button><button id="balb" class="sm">Balades</button><button id="stab" class="sm">Stations</button><button id="rawb" class="sm">Données brutes</button><button id="rawx" class="sm">Exporter brutes</button><button id="voxb" class="sm">Voix : non</button><button id="rtb" class="sm" style="display:none">Belles routes</button><button id="cfgb" class="sm">Accueil et navigation</button><button id="tutb" class="sm">Aide / tuto</button>
 </div><div id="tbk"></div>
 <div id="endov" class="ov"></div><div id="tuto" class="ov"></div><div id="balov" class="ov"></div><div id="brk" style="display:none"></div><div id="dim"><div id="dima">0°</div><div id="dims">0 <small>km/h</small></div><div id="dimg"></div><p>Touche l’écran pour revenir</p></div><p id="mrem" style="display:none"></p><p id="wx" style="display:none"></p><p id="wup" style="display:none"></p>
 <div id="rad" style="display:none"></div><p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
@@ -718,15 +718,20 @@ function Bike3D(cv,MODEL){
     if(!cs.on){if(a>15)cs={on:true,peak:a,side:side,lat:lastLat,lon:lastLon}}
     else if(a>cs.peak){cs.peak=a;cs.lat=lastLat;cs.lon=lastLon}
   }
+  var wq1=0,wq2=0,wqOn=false;
   function mot(e){
     if(test||demo)return;
     var r=e.rotationRate;if(!r||r.alpha==null||!haveUp)return;
     var w=(r.beta*ux+r.gamma*uy+r.alpha*uz)*Math.PI/180;
     var ac0=e.acceleration;if(ac0&&ac0.x!=null&&ac0.y!=null&&ac0.z!=null)accStep(ac0);
     if(cal)calStep(w);
-    w-=wOff;
+    w-=wOff;var wRaw=w;
     frozen=v*3.6<MIN;
     if(!frozen){
+      /* filtre anti-vibration : la vitesse de lacet est lissee (2 poles, plus fort a haute vitesse) */
+      var iv0=e.interval||16.7;if(iv0<1)iv0*=1000;var dq=Math.max(.004,Math.min(.1,iv0/1000)),kq=v*3.6,tq=.10+.10*Math.max(0,Math.min(1,(kq-60)/60)),aq=1-Math.exp(-dq/tq);
+      if(!wqOn){wq1=wq2=w;wqOn=true}
+      wq1+=(w-wq1)*aq;wq2+=(wq1-wq2)*aq;w=wq2;
       var lr=Math.min(2.5,Math.abs(v*w/9.81));lgv+=(lr-lgv)*0.07;if(ride&&lgv>(ride.gL||0))ride.gL=+lgv.toFixed(2);
       var phi=SG*Math.atan(-v*w/9.81)*180/Math.PI;
       phi=phi*lowF(v*3.6)*effK(v*3.6);
@@ -738,8 +743,8 @@ function Bike3D(cv,MODEL){
       if(hfT>=.25){hfT-=.25;var ja=(f-2*hfL+hfM)/.0625;hfM=hfL;hfL=f;if(ride){hsA+=ja*ja*.25;htA+=.25}}
       if(fsl>maxR)maxR=fsl;if(-fsl>maxL)maxL=-fsl;
       if(ride){if(fsl>ride.mR)ride.mR=fsl;if(-fsl>ride.mL)ride.mL=-fsl;track()}
-    }else{f+=(0-f)*0.1;fsl+=(0-fsl)*0.1;lgv+=(0-lgv)*0.1;hfL=hfM=f}
-    if(rawOn&&ride){var tr=performance.now();if(tr-rawT>=50){rawT=tr;raw.push([Date.now(),+v.toFixed(2),+w.toFixed(4),+(r.alpha||0).toFixed(2),+(r.beta||0).toFixed(2),+(r.gamma||0).toFixed(2),+ux.toFixed(3),+uy.toFixed(3),+uz.toFixed(3),+f.toFixed(2),+fsl.toFixed(2)])}}
+    }else{wqOn=false;f+=(0-f)*0.1;fsl+=(0-fsl)*0.1;lgv+=(0-lgv)*0.1;hfL=hfM=f}
+    if(rawOn&&ride){var tr=performance.now();if(tr-rawT>=50){rawT=tr;raw.push([Date.now(),+v.toFixed(2),+wRaw.toFixed(4),+(r.alpha||0).toFixed(2),+(r.beta||0).toFixed(2),+(r.gamma||0).toFixed(2),+ux.toFixed(3),+uy.toFixed(3),+uz.toFixed(3),+f.toFixed(2),+fsl.toFixed(2)])}}
     checkAlert();
     draw();
   }
@@ -750,7 +755,7 @@ function Bike3D(cv,MODEL){
   try{r3=Bike3D($("rbike3d"),window.BIKE_MODEL);if(r3){$("rwrap").classList.add("b3")}}catch(e){r3=null}
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(b3.mode()==="model"?"MT-09 3D":"moto 3D simple"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v76 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v80 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   if(b3){
     
@@ -1000,7 +1005,7 @@ function Bike3D(cv,MODEL){
   rainLabel();
 
   /* ---------- balades : boucle, parcours partage, pauses, stations ---------- */
-  var bal=null,balPend=null,balSeed=Math.floor(Math.random()*360),balT=0;
+  var balTab="loop",bal=null,balPend=null,balSeed=Math.floor(Math.random()*360),balT=0;
   function rangeCalc(){
     var fu=getJ(bkey("fuel"),[]).filter(function(x){return x&&x.t&&x.l>0}).sort(function(a,b){return b.t-a.t});if(!fu.length)return null;
     var tank=14;try{tank=+localStorage.getItem("tank")||14}catch(e){}CR=co2rate();
@@ -1044,12 +1049,16 @@ function Bike3D(cv,MODEL){
     var tm=$("rtt")?$("rtt").value:null,start=Date.now();
     if(tm){var pp=tm.split(":");var d0=new Date();d0.setHours(+pp[0],+pp[1],0,0);start=d0.getTime()}
     var pl=bal?balPlan(start):null,hx='<div class="hh"><button class="pill" id="balx">Fermer</button><h2>Balades</h2><span></span></div>';
-    hx+='<div class="sec">Boucle depuis ici</div><p class="legend" style="margin:0 2px 4px">Choisis la distance : l’app dessine une boucle qui revient à ton point de départ. Elle ne sait pas si la route est belle, c’est une base à ajuster.</p><div class="chips">'+[30,60,100,150,200].map(function(k){return'<button data-lp="'+k+'">'+k+' km</button>'}).join("")+'</div>';
-    hx+='<p class="legend" id="balm" style="margin:0 2px 8px">'+esc(note||"")+'</p>';
+    hx+='<div class="seg" style="grid-template-columns:1fr 1fr!important;margin:0 0 10px"><button data-bt="loop"'+(balTab==="loop"?' class="on"':'')+'>Boucles</button><button data-bt="routes"'+(balTab==="routes"?' class="on"':'')+'>Belles routes</button></div>';
+    if(balTab==="routes")hx+=routesHtml(note);
+    else{
+      hx+='<div class="sec">Boucle depuis ici</div><p class="legend" style="margin:0 2px 4px">Choisis la distance : l\u2019app dessine une boucle qui revient \u00E0 ton point de d\u00E9part. Elle ne sait pas si la route est belle, c\u2019est une base \u00E0 ajuster.</p><div class="chips">'+[10,20,30,40].map(function(k){return'<button data-lp="'+k+'">'+k+' km</button>'}).join("")+'</div>';
+      hx+='<p class="legend" id="balm" style="margin:0 2px 8px">'+esc(note||"")+'</p>';
+    }
     if(balPend)hx+='<div class="card" style="padding:12px 14px;margin-bottom:10px"><b>Parcours reçu : '+esc(balPend.n||"Parcours")+'</b><p class="legend" style="margin:4px 0 8px">'+balPend.w.length+' étapes. Touche pour calculer l’itinéraire.</p><button id="balrx" style="width:100%">Calculer le parcours</button></div>';
     if(bal){
       var sp=bal.dist/(pl.durS/3600);
-      hx+='<div class="sec">'+esc(bal.name)+'</div><div class="rg" style="margin-bottom:8px">'+stat(bal.dist.toFixed(0)+" km","distance")+stat(dur(pl.durS*1000),"durée estimée")+stat(Math.round(sp)+" km/h","moyenne")+'</div>';
+      hx+='<div id="balres"></div><div class="sec">'+esc(bal.name)+'</div><div class="rg" style="margin-bottom:8px">'+stat(bal.dist.toFixed(0)+" km","distance")+stat(dur(pl.durS*1000),"durée estimée")+stat(Math.round(sp)+" km/h","moyenne")+'</div>';
       hx+='<div class="card" style="padding:8px 14px;margin-bottom:10px"><div style="display:flex;align-items:center;gap:8px"><span>Départ à</span><input id="rtt" type="time" class="inp" value="'+pad(new Date(start).getHours())+":"+pad(new Date(start).getMinutes())+'" style="max-width:120px"></div>';
       hx+='<div class="stp"><b>'+hhmm(start)+'</b><span>Départ</span></div>';
       if(!pl.stops.length)hx+='<div class="stp"><b></b><span>Pas de pause nécessaire sur cette distance.</span></div>';
@@ -1075,8 +1084,8 @@ function Bike3D(cv,MODEL){
   }
   $("balb").onclick=function(){tools(false);balView("")};
   /* raccourcis d'accueil et choix de navigation */
-  var SCUT=[["balb","Balades"],["rtb","Routes"],["stab","Stations"],["wxb","M\u00E9t\u00E9o"],["dimb","\u00C9cran \u00E9pur\u00E9"],["dem","D\u00E9mo"]],
-      shortSel=getJ("short",["balb","rtb","stab"]),navK="plans";try{navK=localStorage.getItem("nav")||"plans"}catch(e){}
+  var SCUT=[["balb","Balades et routes"],["stab","Stations"],["wxb","M\u00E9t\u00E9o"],["dimb","\u00C9cran \u00E9pur\u00E9"],["dem","D\u00E9mo"]],
+      shortSel=getJ("short",["balb","stab"]).filter(function(x){return x!=="rtb"}),navK="plans";try{navK=localStorage.getItem("nav")||"plans"}catch(e){}
   var NAVN={plans:"Plans",waze:"Waze",gmaps:"Google Maps"};
   function shortDraw(){var hq=$("hq");hq.innerHTML=SCUT.filter(function(s){return shortSel.indexOf(s[0])>=0}).map(function(s){return'<button data-sh="'+s[0]+'">'+s[1]+'</button>'}).join("")}
   $("hq").onclick=function(e){var id=e.target.getAttribute&&e.target.getAttribute("data-sh");if(id&&$(id))$(id).click()};
@@ -1135,17 +1144,18 @@ function Bike3D(cv,MODEL){
     res.sort(function(a,b){return b.sc-a.sc});
     var seen={},out=[];res.forEach(function(x){if(!seen[x.name]){seen[x.name]=1;out.push(x)}});
     return out.slice(0,12)}
-  function routesView(note){
-    var hx='<div class="hh"><button class="pill" id="balx">Fermer</button><h2>Belles routes</h2><span></span></div><p class="legend" style="margin:0 2px 4px">Routes sinueuses autour de ta position, class\u00E9es d\u2019apr\u00E8s leur trac\u00E9 (OpenStreetMap). L\u2019app ne conna\u00EEt pas l\u2019\u00E9tat du rev\u00EAtement ni le trafic.</p><div class="chips">'+[15,25,40].map(function(k){return'<button data-rr="'+k+'"'+(k===rtR?' class="on"':'')+'>'+k+' km</button>'}).join("")+'</div><p class="legend" id="rtm" style="margin:0 2px 8px">'+esc(note||"")+'</p>';
+  function routesView(note){balTab="routes";balView(note)}
+  function routesHtml(note){
+    var hx='<p class="legend" style="margin:0 2px 4px">Routes sinueuses autour de ta position, class\u00E9es d\u2019apr\u00E8s leur trac\u00E9 (OpenStreetMap). L\u2019app ne conna\u00EEt pas l\u2019\u00E9tat du rev\u00EAtement ni le trafic.</p><div class="chips">'+[15,25,40,70,100].map(function(k){return'<button data-rr="'+k+'"'+(k===rtR?' class="on"':'')+'>'+k+' km</button>'}).join("")+'</div><p class="legend" id="balm" style="margin:0 2px 8px">'+esc(note||"")+'</p>';
     rts.forEach(function(x,i){hx+='<div class="card" style="padding:10px 14px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(x.name)+'</b><span style="color:#ffb703;white-space:nowrap">'+"\u2605".repeat(x.st)+"\u2606".repeat(5-x.st)+'</span></div><div class="legend" style="margin:2px 0 8px">'+x.len.toFixed(0)+' km \u00B7 \u00E0 '+x.d.toFixed(0)+' km de toi \u00B7 '+Math.round(x.cv)+'\u00B0 de virage par km</div><div class="btns"><button data-rt="'+i+'">Faire cette route</button><button data-rp="'+i+'">Ouvrir dans '+NAVN[navK]+'</button></div></div>'});
-    var o=$("balov");o.innerHTML=hx;o.classList.add("open")}
+    return hx}
   function routesLoad(R){
-    rtR=R;rts=[];routesView("Recherche des routes\u2026 (peut prendre 20 secondes)");
+    rtR=R;rts=[];routesView(R>40?"Recherche sur une grande zone\u2026 cela peut prendre une minute ou plus (routes secondaires et tertiaires nomm\u00E9es seulement).":"Recherche des routes\u2026 (peut prendre 20 secondes)");
     if(lastLat==null){gps();routesView("Position inconnue : attends que le GPS te trouve, puis r\u00E9essaie.");return}
-    var lat=lastLat,lon=lastLon,q='[out:json][timeout:25];way(around:'+(R*1000)+','+lat+','+lon+')["highway"~"^(secondary|tertiary|unclassified)$"]["surface"!~"unpaved|gravel|dirt|ground|sand|grass|compacted|fine_gravel"]["access"!~"private|no"];out geom;',
+    var lat=lastLat,lon=lastLon,big=R>40,q='[out:json][timeout:'+(big?80:25)+'][maxsize:'+(big?268435456:67108864)+'];way(around:'+(R*1000)+','+lat+','+lon+')["highway"~"^('+(big?'secondary|tertiary':'secondary|tertiary|unclassified')+')$"]'+(big?'[~"^(name|ref)$"~"."]':'')+'["surface"!~"unpaved|gravel|dirt|ground|sand|grass|compacted|fine_gravel"]["access"!~"private|no"];out geom qt;',
       urls=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
     function go(i){
-      var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){ac&&ac.abort()},28000);
+      var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){ac&&ac.abort()},big?90000:28000);
       fetch(urls[i]+"?data="+encodeURIComponent(q),ac?{signal:ac.signal}:{}).then(function(x){clearTimeout(to);return x.json()}).then(function(j){
         rts=routesFrom(j,lat,lon,R);routesView(rts.length?rts.length+(rts.length>1?" routes trouv\u00E9es.":" route trouv\u00E9e."):"Aucune route sinueuse trouv\u00E9e : essaie un rayon plus grand.")
       }).catch(function(){clearTimeout(to);if(i+1<urls.length)go(i+1);else routesView("Impossible de charger les routes (internet requis, serveur occup\u00E9 ?). R\u00E9essaie dans un moment.")})}
@@ -1159,8 +1169,9 @@ function Bike3D(cv,MODEL){
     if(t.id==="balx")this.classList.remove("open");
     else if(t.getAttribute&&t.getAttribute("data-sc")){var sid=t.getAttribute("data-sc"),si=shortSel.indexOf(sid);if(si>=0)shortSel.splice(si,1);else shortSel.push(sid);setJ("short",shortSel);shortDraw();cfgView()}
     else if(t.getAttribute&&t.getAttribute("data-nv")){navK=t.getAttribute("data-nv");try{localStorage.setItem("nav",navK)}catch(x){}cfgView()}
+    else if(t.getAttribute&&t.getAttribute("data-bt")){balTab=t.getAttribute("data-bt");if(balTab==="routes"&&!rts.length)routesLoad(rtR);else balView("")}
     else if(t.getAttribute&&t.getAttribute("data-rr")){routesLoad(+t.getAttribute("data-rr"))}
-    else if(t.getAttribute&&t.getAttribute("data-rt")){var rx=rts[+t.getAttribute("data-rt")];if(!rx)return;if(lastLat==null){gps();return}var rm=$("rtm");if(rm)rm.textContent="Calcul de l\u2019itin\u00E9raire\u2026";balRoute(rtPts(rx),rx.name,function(err){if(err){var m2=$("rtm");if(m2)m2.textContent="Impossible de calculer (internet requis).";return}balView("")})}
+    else if(t.getAttribute&&t.getAttribute("data-rt")){var rx=rts[+t.getAttribute("data-rt")];if(!rx)return;if(lastLat==null){gps();return}var rm=$("balm");if(rm)rm.textContent="Calcul de l\u2019itin\u00E9raire\u2026";balRoute(rtPts(rx),rx.name,function(err){if(err){var m2=$("balm");if(m2)m2.textContent="Impossible de calculer (internet requis).";return}balView("");var rs_=$("balres");if(rs_)rs_.scrollIntoView()})}
     else if(t.getAttribute&&t.getAttribute("data-rp")){var ry=rts[+t.getAttribute("data-rp")];if(!ry)return;navRoute(rtPts(ry))}
     else if(t.getAttribute&&t.getAttribute("data-lp")){balSeed=Math.floor(Math.random()*360);balLoop(+t.getAttribute("data-lp"));bal&&0}
     else if(t.id==="balre"&&bal){var m=/(\d+) km/.exec(bal.name);balSeed=(balSeed+110)%360;balLoop(m?+m[1]:60)}
@@ -1397,7 +1408,7 @@ function Bike3D(cv,MODEL){
       var o=actx.createOscillator(),g=actx.createGain();o.frequency.value=fq||880;g.gain.value=.3;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.2)}catch(e){}
   }
   function checkAlert(){
-    var a=Math.abs(f);
+    var a=Math.abs((demo||test)?f:fsl);
     if(!thr){document.body.classList.remove("alert");return}
     if(a>=thr){document.body.classList.add("alert");if(armed){armed=false;beep();try{navigator.vibrate&&navigator.vibrate(200)}catch(e){}}}
     else if(a<thr-3){armed=true;document.body.classList.remove("alert")}
@@ -2412,7 +2423,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèle 3D : « 2025 Yamaha MT-09 SP V4 » par VTX (sketchfab.com/VTX_car), licence CC BY-NC-SA 4.0. Modèle simplifié et recoloré. Usage non commercial. Version 76 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèle 3D : « 2025 Yamaha MT-09 SP V4 » par VTX (sketchfab.com/VTX_car), licence CC BY-NC-SA 4.0. Modèle simplifié et recoloré. Usage non commercial. Version 80 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
