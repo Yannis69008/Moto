@@ -40,7 +40,7 @@ button#start{flex:1.6;background:linear-gradient(135deg,#ff8a4c,#ff4f8b);color:#
 .top{display:flex;align-items:center;gap:8px}
 .top #dbg{flex:1}
 .pill{flex:none!important;font-size:15px;padding:5px 12px;border-radius:999px}
-.top #bkb,.top #mapbtn{font-size:20px;font-weight:800;padding:11px 15px;max-width:none!important;overflow:visible!important;text-overflow:clip!important;white-space:nowrap}.top{gap:6px}.top #dbg{font-size:11px;min-width:0;line-height:1.15}
+.top #m3b,.top #mapbtn{font-size:20px;font-weight:800;padding:11px 15px;max-width:none!important;overflow:visible!important;text-overflow:clip!important;white-space:nowrap}.top{gap:6px}.top #dbg{font-size:11px;min-width:0;line-height:1.15}
 .big{font-size:calc(68px*var(--k,1))}
 
 
@@ -155,7 +155,7 @@ body.alert #val{color:#ff3d5a}
 .pin.best{border-color:#ffd54a;box-shadow:0 0 0 3px rgba(255,213,74,.6),0 1px 4px rgba(0,0,0,.5)}
 #wx{margin:0;text-align:center;font-size:15px;font-weight:600;border-radius:14px;padding:6px 10px;background:#3b82f6;color:#fff;cursor:pointer}
 body.mapmode #wx{display:none!important}
-#bkb{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#m3b{max-width:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mrem{margin:0;text-align:center;font-size:15px;font-weight:600;border-radius:10px;padding:5px 10px}
 body.mapmode #mrem{display:none!important}
 .mi{padding:10px 14px;margin-bottom:10px}
@@ -289,7 +289,7 @@ body.mapmode #wup{display:none!important}
 .btns2 button.sm{padding:16px 8px;font-size:17px;border-radius:16px;min-height:58px;flex:none}
 #m3s{display:none;position:fixed;left:0;right:0;bottom:0;z-index:32;max-height:50vh;overflow:auto;background:var(--ovbg);border-radius:20px 20px 0 0;padding:12px 14px calc(16px + env(safe-area-inset-bottom,0px));box-sizing:border-box;box-shadow:0 -6px 28px rgba(0,0,0,.45)}#m3s.open{display:block}
 #m3s .sw{flex:none!important;width:36px;height:36px;min-width:0!important;padding:0!important;border-radius:50%!important;border:3px solid transparent!important}#m3s .sw.on{border-color:var(--fg)!important}
-#m3s .chips button{font-size:15px;padding:10px 4px;min-width:56px}#m3s input[type=range]{width:100%}#m3s .sec{margin-top:10px}#m3s .mdc button{flex:1 1 30%}
+#m3s .chips button.on:not(.sw){background:#2f6bff!important;color:#fff!important;border-color:#2f6bff!important}#m3s .chips button{font-size:15px;padding:10px 4px;min-width:56px}#m3s input[type=range]{width:100%}#m3s .sec{margin-top:10px}#m3s .mdc button{flex:1 1 30%}
 #tbk{display:none;position:fixed;inset:0;z-index:39;background:rgba(5,8,30,.45)}#tbk.open{display:block}
 #tlb{flex:.9;font-size:18px;font-weight:700;border-radius:20px}
 #dbg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;min-width:0}
@@ -358,7 +358,7 @@ body.cmode .dash,body.cmode .gs,body.cmode .btns3,body.cmode #wup,body.cmode #mr
 </style>
 </head>
 <body>
-<div class="top"><button id="bkb" class="pill">🏍 Ma moto</button><button id="mapbtn" class="pill">Carte</button><p id="dbg">capteurs : en attente</p><button id="tbtn" class="pill">Nuit</button></div>
+<div class="top"><button id="m3b" class="pill">🏍 Moto 3D</button><button id="mapbtn" class="pill">Carte</button><p id="dbg">capteurs : en attente</p><button id="tbtn" class="pill">Nuit</button></div>
 <section class="stage card"><div id="crv"></div><div id="map"></div>
 <div id="nav">
   <div id="me"><svg viewBox="0 0 34 42" width="34" height="42"><path d="M17 2 L31 38 L17 30 L3 38 Z" fill="#4cc2ff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg></div>
@@ -399,7 +399,7 @@ body.cmode .dash,body.cmode .gs,body.cmode .btns3,body.cmode #wup,body.cmode #mr
   <button id="wub" class="sm">Préchauffage</button><button id="wxb" class="sm">Météo</button>
   <button id="rdb" class="sm">Radars on</button><button id="alt" class="sm">Alerte off</button>
   <button id="dem" class="sm">D&eacute;mo</button><button id="rst" class="sm">Reset max</button>
-  <button id="brkb" class="sm">Pause</button><button id="rnb" class="sm">Pluie</button><button id="dimb" class="sm">Écran épuré</button><button id="balb" class="sm">Balades</button><button id="stab" class="sm">Stations</button><button id="rawb" class="sm">Données brutes</button><button id="rawx" class="sm">Exporter brutes</button><button id="voxb" class="sm">Voix : non</button><button id="rtb" class="sm" style="display:none">Belles routes</button><button id="m3b" class="sm">Moto 3D et effets</button><button id="ecob" class="sm">Économie batterie : non</button><button id="cfgb" class="sm">Accueil et navigation</button><button id="tutb" class="sm">Aide / tuto</button>
+  <button id="brkb" class="sm">Pause</button><button id="rnb" class="sm">Pluie</button><button id="dimb" class="sm">Écran épuré</button><button id="balb" class="sm">Balades</button><button id="stab" class="sm">Stations</button><button id="rawb" class="sm">Données brutes</button><button id="rawx" class="sm">Exporter brutes</button><button id="voxb" class="sm">Voix : non</button><button id="rtb" class="sm" style="display:none">Belles routes</button><button id="bkb" class="sm">Ma moto</button><button id="ecob" class="sm">Économie batterie : non</button><button id="cfgb" class="sm">Accueil et navigation</button><button id="tutb" class="sm">Aide / tuto</button>
 </div><div id="tbk"></div><div id="m3s"></div>
 <div id="endov" class="ov"></div><div id="tuto" class="ov"></div><div id="balov" class="ov"></div><div id="brk" style="display:none"></div><div id="dim"><div id="dima">0°</div><div id="dims">0 <small>km/h</small></div><div id="dimg"></div><p>Touche l’écran pour revenir</p></div><p id="mrem" style="display:none"></p><p id="wx" style="display:none"></p><p id="wup" style="display:none"></p>
 <div id="rad" style="display:none"></div><p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
@@ -871,8 +871,11 @@ function Bike3D(cv,MODEL){
       if(!wqOn){wq1=wq2=w;wqOn=true}
       wq1+=(w-wq1)*aq;wq2+=(wq1-wq2)*aq;w=wq2;
       var lr=Math.min(2.5,Math.abs(v*w/9.81));lgv+=(lr-lgv)*0.07;if(ride&&lgv>(ride.gL||0))ride.gL=+lgv.toFixed(2);
-      var phi=SG*Math.atan(-v*w/9.81)*180/Math.PI;
-      phi=phi*lowF(v*3.6)*effK(v*3.6);if(phi>0)phi*=GR;
+      var xr=SG*(-v*w/9.81);if(xr>0)xr*=GR;
+      /* plafond doux : au-dela de ~0,55 g lateral la lecture est compressee vers 1,05 g (~46 deg) a moins de 100 km/h, 0,8 g (~39 deg) a 140 km/h et plus : les pics a 1,5-2,5 g a haute vitesse sont du bruit (guidon, vibrations) */
+      var xa=Math.abs(xr),xm=1.05-.25*Math.max(0,Math.min(1,(v*3.6-100)/40)),xw=xm-.55;if(xa>.55)xa=.55+xw*Math.tanh((xa-.55)/xw);xr=xr<0?-xa:xa;
+      var phi=Math.atan(xr)*180/Math.PI;
+      phi=phi*lowF(v*3.6)*effK(v*3.6);
       if(phi>75)phi=75;if(phi<-75)phi=-75;
       /* zigzags : 4 inversions de roulis rapides (< 1,9 s) de suite -> lecture attenuee de 20 % (guidon qui tourne avec le telephone) */
       var zt=performance.now()/1000;
@@ -906,7 +909,7 @@ function Bike3D(cv,MODEL){
   try{r3=Bike3D($("rbike3d"),M3D);if(r3){$("rwrap").classList.add("b3")}}catch(e){r3=null}
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(b3.mode()==="model"?(M3N[M3I]+" 3D"):"moto 3D simple"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v98 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v101 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1},P2=-1,Z3=1;
   try{var fj=JSON.parse(localStorage.getItem("fx3"));if(fj)for(var fk in fj)if(fk in FX3)FX3[fk]=fj[fk]?1:0}catch(e){}
@@ -1298,11 +1301,11 @@ function Bike3D(cv,MODEL){
     var o=$("m3s"),P=b3?b3.paints():[],lp=b3?b3.hasLamps():[0,0];
     function sw(k,i){var c=P[i];return'<button class="sw'+((k==="c"?PI3:P2)===i?' on':'')+'" data-m3="'+k+':'+i+'" style="background:rgb('+Math.round(c[0]*255)+','+Math.round(c[1]*255)+','+Math.round(c[2]*255)+')!important"></button>'}
     var h2='<div class="hh"><button class="pill" id="m3x">Fermer</button><h2>Moto 3D</h2><span></span></div>';
-    h2+='<div class="sec">Mod\u00E8le</div><div class="chips mdc">'+M3N.map(function(n,i){return'<button data-m3="m:'+i+'"'+(i===M3I?' class="on"':'')+'>'+n+'</button>'}).join("")+'</div>';
+    h2+='<div class="sec">Mod\u00E8le</div><div class="chips mdc">'+M3N.map(function(n,i){return'<button data-m3="m:'+i+'"'+(i===M3I?' class="on"':'')+'>'+(i===M3I?'\u2713 ':'')+n+'</button>'}).join("")+'</div>';
     h2+='<div class="sec">Couleur</div><div class="chips">'+P.map(function(c,i){return sw("c",i)}).join("")+'</div>';
     h2+='<div class="sec">Deuxi\u00E8me couleur (arri\u00E8re)</div><div class="chips"><button data-m3="d:-1"'+(P2<0?' class="on"':'')+'>Aucune</button>'+P.map(function(c,i){return sw("d",i)}).join("")+'</div>';
-    h2+='<div class="sec">Effets</div><div class="chips mdc">'+FXN.map(function(x){return'<button data-m3="f:'+x[0]+'"'+(FX3[x[0]]?' class="on"':'')+'>'+x[1]+'</button>'}).join("")+'</div>';
-    h2+='<p class="legend" style="margin:0 2px 4px">Feux : le phare s\u2019allume la nuit, le feu stop au freinage ; la pi\u00E8ce lumineuse n\u2019existe que sur certains mod\u00E8les ('+(lp[0]?'phare ':'')+(lp[1]?'feu arri\u00E8re ':'')+(!lp[0]&&!lp[1]?'aucune sur celui-ci':'sur celui-ci')+'). \u00C9tincelles : visuelles, au-dessus de 45\u00B0.</p>';
+    h2+='<div class="sec">Effets</div><div class="chips mdc">'+FXN.map(function(x){return'<button data-m3="f:'+x[0]+'"'+(FX3[x[0]]?' class="on"':'')+'>'+(FX3[x[0]]?'\u2713 ':'')+x[1]+'</button>'}).join("")+'</div>';
+    h2+='<p class="legend" style="margin:0 2px 4px">Feux : le phare s\u2019allume la nuit, le feu stop au freinage ; la pi\u00E8ce lumineuse n\u2019existe que sur certains mod\u00E8les ('+(lp[0]?'phare ':'')+(lp[1]?'feu arri\u00E8re ':'')+(!lp[0]&&!lp[1]?'aucune sur celui-ci':'sur celui-ci')+'). \u00C9tincelles : visuelles, au-dessus de 30\u00B0.</p>';
     h2+='<div class="sec">Zoom</div><input type="range" id="m3z" min="60" max="140" value="'+Math.round(Z3*100)+'"><div class="chips"><button data-m3="z:reset">Zoom normal</button></div>';
     o.innerHTML=h2;
   }
@@ -2061,7 +2064,7 @@ function Bike3D(cv,MODEL){
   function bkey(k){return curBike==="b1"?k:k+"_"+curBike}
   function loadB(){return load().filter(function(r){return(r.bike||"b1")===curBike})}
   function bikeName(){var b=bikes().filter(function(x){return x.id===curBike})[0];return b?b.name:"Ma moto"}
-  function bikeLabel(){var n=bikeName();$("bkb").textContent="\uD83C\uDFCD "+(n.length>11?n.slice(0,10)+"\u2026":n)}
+  function bikeLabel(){var n=bikeName();$("bkb").textContent=n==="Ma moto"?"Ma moto":"Ma moto : "+(n.length>14?n.slice(0,13)+"\u2026":n)}
   function bikeSet(id){curBike=id;histLoad();try{localStorage.setItem("bike",id)}catch(e){}bikeLabel();remind();if($("hist").classList.contains("open"))list()}
   $("bkb").onclick=function(){
     if(on){$("msg").textContent="Termine d\u2019abord la sortie en cours pour changer de moto.";return}
@@ -2212,7 +2215,7 @@ function Bike3D(cv,MODEL){
   }
   function wxRows(a,n){
     var h='<div class="card mi" style="padding:6px 10px">';
-    a.slice(0,n).forEach(function(x){h+='<div class="rt" style="font-size:17px;border-top:1px solid var(--line);padding:5px 0"><b style="width:44px">'+x.h+' h</b><span style="flex:1;color:var(--fg);font-size:16px">'+(WC[x.c]||"")+'</span><span style="text-align:right;white-space:nowrap;font-size:15px">'+Math.round(x.T)+'\u00B0 \u00B7 '+x.p+'% \u00B7 '+Math.round(x.w)+'/'+Math.round(x.g)+' km/h</span></div>'});
+    a.slice(0,n).forEach(function(x){h+='<div class="rt" style="font-size:17px;border-top:1px solid var(--line);padding:5px 0"><b style="width:44px">'+x.h+' h</b><span style="flex:1;color:var(--fg);font-size:16px">'+wxEmo(x.c,(+x.h>=7&&+x.h<=20)?1:0)+' '+(WC[x.c]||"")+'</span><span style="text-align:right;white-space:nowrap;font-size:15px">\uD83C\uDF21 '+Math.round(x.T)+'\u00B0 \u00B7 \u2614 '+x.p+'% \u00B7 \uD83D\uDCA8 '+Math.round(x.w)+'/'+Math.round(x.g)+' km/h</span></div>'});
     return h+'</div>';
   }
   function wxView(){
@@ -2292,7 +2295,7 @@ function Bike3D(cv,MODEL){
   /* ---------- feuille Outils ---------- */
   function tools(o){$("tools").classList.toggle("open",o);$("tbk").classList.toggle("open",o)}
   $("tlb").onclick=function(){tools(true)};$("tlx").onclick=function(){tools(false)};$("tbk").onclick=function(){tools(false)};
-  ["wxb","wub","clb","dem"].forEach(function(id){$(id).addEventListener("click",function(){tools(false)})});
+  ["wxb","wub","clb","dem","bkb"].forEach(function(id){$(id).addEventListener("click",function(){tools(false)})});
 
 
   $("wxb").onclick=wxView;$("wx").onclick=wxView;
@@ -2740,7 +2743,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 98 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 101 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
