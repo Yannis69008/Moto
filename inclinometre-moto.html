@@ -144,6 +144,7 @@ body.alert #val{color:#ff3d5a}
 #lim{display:none;position:absolute;left:10px;top:122px;z-index:6;width:54px;height:54px;border-radius:50%;background:#fff;border:6px solid #e5303a;color:#111;font:700 25px/42px "Barlow Condensed",sans-serif;text-align:center;box-sizing:border-box;pointer-events:none}
 #lim.over{background:#e5303a;color:#fff}
 #warn{display:none;position:absolute;left:10px;right:10px;bottom:128px;z-index:6;background:#ffb703;color:#111;border-radius:12px;padding:6px 12px;font-size:19px;font-weight:600;text-align:center;pointer-events:none}
+#ctr{display:none;position:absolute;right:10px;top:156px;pointer-events:auto;padding:6px 14px;font-size:15px;z-index:6;background:var(--nbx);color:var(--nfg);border:1px solid var(--line);box-shadow:0 6px 18px rgba(20,30,80,.18)}#nav.free #ctr{display:block}.stage.follow #ctr,#nav.srch #ctr{display:none!important}
 #rmode{position:absolute;right:10px;top:114px;pointer-events:auto;background:rgba(10,12,40,.92);color:#f5f3ff;border:1px solid rgba(255,255,255,.2);padding:6px 14px;font-size:14px;z-index:6}
 
 .tg{display:inline-block;margin:6px 6px 0 0;padding:2px 10px;font-size:13px;border:1px solid rgba(255,255,255,.28);border-radius:999px;color:#cfe3ff}
@@ -385,6 +386,7 @@ body.cmode .dash,body.cmode .gs,body.cmode .btns3,body.cmode #wup,body.cmode #mr
   <div id="warn"></div>
   <button id="fol" class="pill">Suivi</button>
   <button id="rmode" class="pill">Route standard</button>
+  <button id="ctr" class="pill">📍 Me centrer</button>
   <div id="navtop">
     <div class="navbox"><div id="navbar"><input id="dest" type="search" placeholder="O&ugrave; vas-tu ?" enterkeyhint="search" autocomplete="off" autocorrect="off"><button id="go" class="pill">Go</button></div><div id="res"></div></div>
   </div>
@@ -839,6 +841,12 @@ function Bike3D(cv,MODEL){
       pitch=p;brake=br;spd=sp;gL=l;gR=r;return ch;
     },
     hasLamps:function(){return[!!lampH,!!lampT]},
+    setModel:function(b64){
+      try{D=[];lampT=null;lampH=null;useModel=false;IDX=null;build();loadModel(b64);DATA=new Float32Array(D);D=null;
+        gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,DATA,gl.STATIC_DRAW);
+        if(!ibuf)ibuf=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibuf);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,IDX,gl.STATIC_DRAW);
+        parts.length=0;smoke.length=0;render();return true}catch(e){window.__b3err=String(e.message||e);return false}
+    },
     render:render
   };
 }
@@ -937,7 +945,7 @@ function Bike3D(cv,MODEL){
   try{r3=Bike3D($("rbike3d"),M3D);if(r3){$("rwrap").classList.add("b3")}}catch(e){r3=null}
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(b3.mode()==="model"?(M3N[M3I]+" 3D"):"moto 3D simple"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v104 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v105 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1},P2=-1,Z3=1;
   try{var fj=JSON.parse(localStorage.getItem("fx3"));if(fj)for(var fk in fj)if(fk in FX3)FX3[fk]=fj[fk]?1:0}catch(e){}
@@ -1325,11 +1333,20 @@ function Bike3D(cv,MODEL){
     var o=$("balov");o.innerHTML=hx;o.classList.add("open")}
   /* ---------- Moto 3D et effets ---------- */
   var FXN=[["g","Fant\u00F4mes (angle max)"],["o","Contour selon l\u2019angle"],["p","Plong\u00E9e / cabr\u00E9"],["s","\u00C9tincelles"],["l","Feux et phare"],["sl","Lignes de vitesse"],["fu","Fum\u00E9e d\u2019\u00E9chappement"]];
+  function m3Set(i){
+    if(M3L[i]==null)return;
+    var ok=true;[b3,r3].forEach(function(b){if(b&&!b.setModel(M3L[i]))ok=false});
+    if(!ok){try{localStorage.setItem("bike3",String(i))}catch(x){}location.reload();return}
+    M3I=i;M3D=M3L[i];try{localStorage.setItem("bike3",String(i))}catch(x){}
+    var m=$("msg");if(m)m.textContent=m.textContent.replace(/rendu : [^\]]*\]/,"rendu : "+M3N[i]+" 3D]");
+    if($("m3s").classList.contains("open")){var o=$("m3s"),st=o.scrollTop;m3Draw();o.scrollTop=st}
+  }
+  function m3Order(){return M3N.map(function(n,i){return i}).sort(function(a,b){return M3N[a].localeCompare(M3N[b],"fr")})}
   function m3Draw(){
     var o=$("m3s"),P=b3?b3.paints():[],lp=b3?b3.hasLamps():[0,0];
     function sw(k,i){var c=P[i];return'<button class="sw'+((k==="c"?PI3:P2)===i?' on':'')+'" data-m3="'+k+':'+i+'" style="background:rgb('+Math.round(c[0]*255)+','+Math.round(c[1]*255)+','+Math.round(c[2]*255)+')!important"></button>'}
     var h2='<div class="hh"><button class="pill" id="m3x">Fermer</button><h2>Moto 3D</h2><span></span></div>';
-    h2+='<div class="sec">Mod\u00E8le</div><div class="chips mdc">'+M3N.map(function(n,i){return'<button data-m3="m:'+i+'"'+(i===M3I?' class="on"':'')+'>'+(i===M3I?'\u2713 ':'')+n+'</button>'}).join("")+'</div>';
+    h2+='<div class="sec">Mod\u00E8le</div><div class="chips mdc">'+m3Order().map(function(i){var n=M3N[i];return'<button data-m3="m:'+i+'"'+(i===M3I?' class="on"':'')+'>'+(i===M3I?'\u2713 ':'')+n+'</button>'}).join("")+'</div>';
     h2+='<div class="sec">Couleur</div><div class="chips">'+P.map(function(c,i){return sw("c",i)}).join("")+'</div>';
     h2+='<div class="sec">Deuxi\u00E8me couleur (arri\u00E8re)</div><div class="chips"><button data-m3="d:-1"'+(P2<0?' class="on"':'')+'>Aucune</button>'+P.map(function(c,i){return sw("d",i)}).join("")+'</div>';
     h2+='<div class="sec">Effets</div><div class="chips mdc">'+FXN.map(function(x){return'<button data-m3="f:'+x[0]+'"'+(FX3[x[0]]?' class="on"':'')+'>'+(FX3[x[0]]?'\u2713 ':'')+x[1]+'</button>'}).join("")+'</div>';
@@ -1343,7 +1360,7 @@ function Bike3D(cv,MODEL){
   $("m3s").addEventListener("click",function(e){
     var t=e.target;if(t.id==="m3x"){this.classList.remove("open");return}
     var d=t.getAttribute&&t.getAttribute("data-m3");if(!d)return;var a=d.split(":"),k=a[0],val=a[1];
-    if(k==="m"){var i=+val;if(i!==M3I){try{localStorage.setItem("bike3",String(i))}catch(x){}location.reload()}return}
+    if(k==="m"){var i=+val;if(i!==M3I)m3Set(i);return}
     if(k==="c"){PI3=+val;if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);try{localStorage.setItem("paint",String(PI3))}catch(x){}}
     else if(k==="d"){P2=+val;if(b3)b3.setPaint2(P2);if(r3)r3.setPaint2(P2);try{localStorage.setItem("paint2",String(P2))}catch(x){}}
     else if(k==="f"){FX3[val]=FX3[val]?0:1;if(b3)b3.setFx(FX3);if(r3)r3.setFx(FX3);try{localStorage.setItem("fx3",JSON.stringify(FX3))}catch(x){}}
@@ -1573,7 +1590,7 @@ function Bike3D(cv,MODEL){
         if(mapOn){
           if(follow){var z=(nav&&nav.dn!=null&&nav.dn<250)?18:(v>22?15:(v>14?16:17));
             if(!mapFirst||map.getZoom()!==z){map.setView(ll,z,{animate:false});mapFirst=true}else map.panTo(ll,{animate:true,duration:1,easeLinearity:1})}
-          else if(!mapFirst){map.setView(ll,16);mapFirst=true}else map.panTo(ll)
+          else if(!mapFirst){map.setView(ll,16);mapFirst=true}else if(!mapFree)map.panTo(ll)
         }
         if(ride){if(prevLL){liveSegs.push(L.polyline([prevLL,ll],{color:col(Math.abs(f)),weight:6,opacity:.95}).addTo(map))}prevLL=ll}
         var nt=isNight(lastLat,lastLon);if(cc.night!==nt){cc.night=nt;if(tmode==="auto")setRes(nt?"night":"day")}
@@ -1807,7 +1824,7 @@ function Bike3D(cv,MODEL){
       map=L.map("map",{zoomControl:false}).setView([46.6,2.4],5);tiles().addTo(map);
       mk=L.circleMarker([0,0],{radius:9,color:"#fff",weight:3,fillColor:"#ff8a4c",fillOpacity:1});
       live=L.polyline([],{color:"#5ec8ff",weight:4}).addTo(map);
-      holdInit();
+      holdInit();freeInit();
     }
     mapFirst=false;gps();drfUI();
     setTimeout(function(){map.invalidateSize();if(lastLat!=null){mk.addTo(map);map.setView([lastLat,lastLon],16);mapFirst=true}else $("msg").textContent="En attente du GPS pour te placer sur la carte\u2026"},60);
@@ -1818,7 +1835,7 @@ function Bike3D(cv,MODEL){
 
   function brg(a,b,c,d){var y=Math.sin((d-b)*Math.PI/180)*Math.cos(c*Math.PI/180),x=Math.cos(a*Math.PI/180)*Math.sin(c*Math.PI/180)-Math.sin(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.cos((d-b)*Math.PI/180);return(Math.atan2(y,x)*180/Math.PI+360)%360}
   function setFollow(on){
-    follow=on;document.querySelector(".stage").classList.toggle("follow",on);$("fol").textContent=on?"Nord":"Suivi";
+    follow=on;if(typeof setFree==='function')setFree(false);document.querySelector(".stage").classList.toggle("follow",on);$("fol").textContent=on?"Nord":"Suivi";
     if(map){
       if(map.dragging){on?map.dragging.disable():map.dragging.enable()}
       if(!on&&mk&&!map.hasLayer(mk))mk.addTo(map);
@@ -1983,6 +2000,16 @@ function Bike3D(cv,MODEL){
     if(nav&&!nav.done){nav.wps.push([ll.lat,ll.lng]);mapToast("Étape ajoutée · recalcul…");recompute();return}
     drf.push([ll.lat,ll.lng]);drfDraw();drfPrev();
   }
+  var mapFree=false;
+  function setFree(v){mapFree=v;$("nav").classList.toggle("free",v)}
+  function freeInit(){
+    var c=map.getContainer(),ps={},sx=0,sy=0;
+    c.addEventListener("pointerdown",function(e){ps[e.pointerId]=1;sx=e.clientX;sy=e.clientY;if(Object.keys(ps).length>1&&!follow)setFree(true)});
+    c.addEventListener("pointermove",function(e){if(ps[e.pointerId]&&!follow&&Math.hypot(e.clientX-sx,e.clientY-sy)>12)setFree(true)});
+    ["pointerup","pointercancel"].forEach(function(n){c.addEventListener(n,function(e){delete ps[e.pointerId]})});
+    c.addEventListener("wheel",function(){if(!follow)setFree(true)},{passive:true});
+  }
+  $("ctr").onclick=function(){setFree(false);if(map&&lastLat!=null)map.setView([lastLat,lastLon],Math.max(map.getZoom(),15))};
   function holdInit(){
     var c=map.getContainer(),t=null,sx=0,sy=0,ids={};
     function clr(){if(t){clearTimeout(t);t=null}}
@@ -2167,7 +2194,7 @@ function Bike3D(cv,MODEL){
     var b=bikes(),m="Ta moto actuelle : "+bikeName()+"\n\nChoisis :\n"+b.map(function(x,i){return(i+1)+" = "+x.name}).join("\n")+"\n0 = ajouter une moto\nr = renommer la moto actuelle\nm = changer la moto 3D (actuelle : "+M3N[M3I]+")",a=prompt(m,"");
     if(a==null)return;a=a.trim().toLowerCase();
     if(a==="0"){var n=prompt("Nom de la nouvelle moto ?","");if(n&&n.trim()){var id="b"+Date.now();b.push({id:id,name:n.trim().slice(0,24)});setJ("bikes",b);bikeSet(id)}}
-    else if(a==="m"){var q=prompt("Moto 3D (actuelle : "+M3N[M3I]+")\n\n"+M3N.map(function(x,i){return(i+1)+" = "+x}).join("\n"),"");if(q==null)return;var k=parseInt(q,10)-1;if(M3N[k]!==undefined&&k!==M3I){try{localStorage.setItem("bike3",String(k))}catch(e){}location.reload()}}
+    else if(a==="m"){var mo=m3Order(),q=prompt("Moto 3D (actuelle : "+M3N[M3I]+")\n\n"+mo.map(function(x,j){return(j+1)+" = "+M3N[x]}).join("\n"),"");if(q==null)return;var k=mo[parseInt(q,10)-1];if(k!==undefined&&k!==M3I)m3Set(k)}
     else if(a==="r"){var n2=prompt("Nouveau nom ?",bikeName());if(n2&&n2.trim()){b.forEach(function(x){if(x.id===curBike)x.name=n2.trim().slice(0,24)});setJ("bikes",b);bikeLabel()}}
     else{var i=parseInt(a,10)-1;if(b[i])bikeSet(b[i].id)}
   };
@@ -2840,7 +2867,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 104 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 105 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
