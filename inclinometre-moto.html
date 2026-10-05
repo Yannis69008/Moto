@@ -243,7 +243,7 @@ body.mapmode .top{justify-content:space-between}
 /* ===== v51 ===== */
 #hud{flex-direction:column;align-items:flex-start;gap:0;padding:2px 14px 5px;min-width:96px}
 #hud .hr{display:flex;align-items:baseline;gap:6px}
-#hudv{font-size:54px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}#hudd{font-size:28px}
+#hud .hr{display:none}#hud.nv .hr{display:flex}#hudv{font-size:54px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}#hudd{font-size:28px}
 #hudg{font-size:17px;font-weight:600;color:var(--mut);font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap}
 #hudg b{color:var(--nfg);font-weight:700}
 #lim{top:180px!important}
@@ -363,7 +363,7 @@ body.cmode .dash,body.cmode .gs,body.cmode .btns3,body.cmode #wup,body.cmode #mr
 <div id="nav">
   <div id="me"><svg viewBox="0 0 34 42" width="34" height="42"><path d="M17 2 L31 38 L17 30 L3 38 Z" fill="#4cc2ff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg></div>
   <div id="attr">&copy; OpenStreetMap</div>
-  <div id="hud"><div class="hr"><b id="hudv">0&deg;</b><small id="hudd"></small></div><div id="hudal">▲ — · —</div><div id="hudg">lat <b id="hudl">0,00</b> · acc <b id="huda">0,00</b> · fr <b id="hudb">0,00</b> g</div></div>
+  <div id="hud"><div class="hr"><b id="hudv">--:--</b><small id="hudd"></small></div><div id="hudal">▲ — · —</div><div id="hudg">lat <b id="hudl">0,00</b> · acc <b id="huda">0,00</b> · fr <b id="hudb">0,00</b> g</div></div>
   <div id="lim"></div>
   <div id="warn"></div>
   <button id="fol" class="pill">Suivi</button>
@@ -725,7 +725,7 @@ function Bike3D(cv,MODEL){
     c.style.cssText="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;border-radius:26px";
     var p=cv.parentNode;if(!p)return null;p.insertBefore(c,front?cv.nextSibling:cv);return c;
   }
-  function wantLoop(){return (fx.sl&&spd>12)||parts.length>0||(fx.s&&Math.abs(lean)>45)||(fx.fu&&spd>5)||smoke.length>0}
+  function wantLoop(){return (fx.sl&&spd>12)||parts.length>0||(fx.s&&Math.abs(lean)>30)||(fx.fu&&spd>5)||smoke.length>0}
   function ensureLoop(){if(loopOn||!wantLoop())return;loopOn=true;requestAnimationFrame(tick)}
   function tick(ts){loopOn=false;if(document.hidden||!cv.clientWidth)return;if(ts-lastFx>25)fxDraw(ts);ensureLoop()}
   function fxDraw(ts){
@@ -775,9 +775,9 @@ function Bike3D(cv,MODEL){
     }
     /* etincelles (purement visuelles) */
     var al2=Math.abs(lean);
-    if(fx.s&&al2>45){
+    if(fx.s&&al2>30){
       var side=lean>0?1:-1;p=proj([side*.34,.30,.18]);
-      spC+=(30+(al2-45)*9)*dt;
+      spC+=(30+(al2-30)*9)*dt;
       while(spC>=1&&parts.length<90){spC-=1;
         parts.push({x:p[0],y:p[1],vx:side*(20+Math.random()*170)*sc,vy:-(30+Math.random()*190)*sc,l:.25+Math.random()*.4,m:.65})}
       var gl2=f.createRadialGradient(p[0],p[1],0,p[0],p[1],14*sc);gl2.addColorStop(0,"rgba(255,230,150,.9)");gl2.addColorStop(1,"rgba(255,150,40,0)");
@@ -818,7 +818,7 @@ function Bike3D(cv,MODEL){
 </script>
 <script>
 (function(){
-  var wOff=0,DL=3,cal=null;
+  var wOff=0,DL=3,cal=null,GR=1.4,spdT=null,spdD=null;
   try{wOff=+localStorage.getItem('woff')||0;DL=+localStorage.getItem('dl')||3}catch(e){}
   var KS=.6,KSL=[1,.8,.6,1.2];
   try{KS=+localStorage.getItem('ks2')||.6}catch(e){}
@@ -872,7 +872,7 @@ function Bike3D(cv,MODEL){
       wq1+=(w-wq1)*aq;wq2+=(wq1-wq2)*aq;w=wq2;
       var lr=Math.min(2.5,Math.abs(v*w/9.81));lgv+=(lr-lgv)*0.07;if(ride&&lgv>(ride.gL||0))ride.gL=+lgv.toFixed(2);
       var phi=SG*Math.atan(-v*w/9.81)*180/Math.PI;
-      phi=phi*lowF(v*3.6)*effK(v*3.6);
+      phi=phi*lowF(v*3.6)*effK(v*3.6);if(phi>0)phi*=GR;
       if(phi>75)phi=75;if(phi<-75)phi=-75;
       /* zigzags : 4 inversions de roulis rapides (< 1,9 s) de suite -> lecture attenuee de 20 % (guidon qui tourne avec le telephone) */
       var zt=performance.now()/1000;
@@ -882,7 +882,7 @@ function Bike3D(cv,MODEL){
       if(zn>=4){zon=zt-zcr[zn-1]<1.9;for(var zi=zn-4;zi<zn-1&&zon;zi++)if(zcr[zi+1]-zcr[zi]>=1.9)zon=false}
       zk+=((zon?.8:1)-zk)*(1-Math.exp(-Math.min(.1,Math.max(.001,zt-zT))/(zon?.6:1.2)));zT=zt;
       phi*=zk;
-      lgs+=(Math.max(-2.5,Math.min(2.5,SG*(-v*w/9.81)))*zk-lgs)*0.07;
+      lgs+=(Math.max(-2.5,Math.min(2.5,SG*(-v*w/9.81)))*zk*(-v*w>0?GR:1)-lgs)*0.07;
       phi=dz(phi);
       f+=(phi-f)*0.07;
       var tn=performance.now();fsl+=(f-fsl)*(1-Math.exp(-Math.min(.1,(tn-fsT)/1000)/(zon?.6:.35)));fsT=tn;
@@ -906,7 +906,7 @@ function Bike3D(cv,MODEL){
   try{r3=Bike3D($("rbike3d"),M3D);if(r3){$("rwrap").classList.add("b3")}}catch(e){r3=null}
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(b3.mode()==="model"?(M3N[M3I]+" 3D"):"moto 3D simple"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v95 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v98 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1},P2=-1,Z3=1;
   try{var fj=JSON.parse(localStorage.getItem("fx3"));if(fj)for(var fk in fj)if(fk in FX3)FX3[fk]=fj[fk]?1:0}catch(e){}
@@ -1445,7 +1445,6 @@ function Bike3D(cv,MODEL){
     var m=hold;
     setT("val",Math.round(m)+"°");
     setT("side",(frozen&&!test&&!demo)?"figé":(m<1?"droit":(holdS>0?"droite":"gauche"))+(test?" (test)":""));
-    setT("hudv",Math.round(m)+"°");setT("hudd",m<1?"":(holdS>0?"→":"←"));
     var hc=col(m);if(cc.hudc!==hc){cc.hudc=hc;$("hud").style.borderColor=hc}
     var lt=Math.min(2.5,lgv||0),ga=geff()||0;
     if(demo||test){lt=Math.min(2.5,Math.tan(Math.abs(f)*Math.PI/180));if(demo)ga=0.4*Math.sin(Date.now()/1400)}
@@ -1473,8 +1472,9 @@ function Bike3D(cv,MODEL){
     else if(vw==="c"){lapLive();if(t-gLastD>120){gLastD=t;lapDraw()}}
     if(t-jT>=50){jT=t;var jd=Math.abs(f-2*jf1+jf2);jf2=jf1;jf1=f;jm+=(jd-jm)*(1-Math.exp(-.05/.5))}
     disp+=(f-disp)*(1-Math.exp(-dt/(.11+Math.min(1,Math.max(0,(jm-.25)/.4))*.3)));
+    if(spdT!=null){spdD=spdT<1?spdT:(spdD==null||Math.abs(spdT-spdD)>40?spdT:spdD+(spdT-spdD)*(1-Math.exp(-dt/.45)));setH("spd",Math.round(spdD)+' <small>km/h</small>')}else spdD=null;
     var dch=false;
-    if(vw==="bike"&&b3){var gq=Math.abs(gLonD),pd=(gLonD<0?-1:1)*Math.max(0,gq-.04)*10;pd=Math.max(-6,Math.min(6,pd));if(gLonD>.22)pd=Math.min(12,pd+(gLonD-.22)*45);
+    if(vw==="bike"&&b3){var gq=Math.abs(gLonD),pd=(gLonD<0?-1:1)*Math.max(0,gq-.03)*14;pd=Math.max(-6,Math.min(6,pd));if(gLonD>.13)pd=Math.min(14,pd+(gLonD-.13)*60);
       dch=b3.setDyn(pd,Math.max(0,Math.min(1,(-gLonD-.08)/.22)),demo?Math.max(v*3.6,0):v*3.6,maxL,maxR)}
     if(vw==="bike"&&(dch||lastDeg===null||Math.abs(disp-lastDeg)>.02)){lastDeg=disp;if(b3)b3.setLean(disp);else $("bikeimg").style.transform="translate3d(0,0,0) rotate("+disp.toFixed(2)+"deg)"}
     if(follow){var dh=((hT-hd+540)%360)-180;hd=(hd+dh*(1-Math.exp(-dt/.3))+360)%360;$("map").style.transform="translateY(9%) rotate("+(-hd).toFixed(1)+"deg)"}
@@ -1523,7 +1523,7 @@ function Bike3D(cv,MODEL){
     if(!navigator.geolocation){setH("spd","GPS indisponible");return}
     gid=navigator.geolocation.watchPosition(function(p){
       var s=p.coords.speed;v=(s==null||s<0)?0:s;var k=Math.round(v*3.6);gStep(s==null||s<0?null:v,p.timestamp||Date.now());
-      setH("spd",(s==null||s<0?"--":k)+' <small>km/h</small>');
+      spdT=(s==null||s<0)?null:v*3.6;if(spdT==null)setH("spd","-- <small>km/h</small>");
       lastLat=p.coords.latitude;lastLon=p.coords.longitude;
       tempUpdate(lastLat,lastLon);lapStep(lastLat,lastLon,p.timestamp||Date.now());
       var al=p.coords.altitude;
@@ -1660,7 +1660,7 @@ function Bike3D(cv,MODEL){
   calLabel();
 
   /* ---------- zones de danger (radars fixes OpenStreetMap) ---------- */
-  var rad=getJ("radc",{cx:null,cy:null,list:[]}),radOn=true,radBusy=false,radW={},radShown=0;
+  var rad=getJ("radc",{cx:null,cy:null,list:[]}),radOn=true,radBusy=false,radW={},radP={},radShown=0;
   try{radOn=localStorage.getItem("rad")!=="0"}catch(e){}
   function radLabel(){$("rdb").textContent=radOn?"Radars on":"Radars off"}
   function radFetch(lat,lon){
@@ -1670,7 +1670,7 @@ function Bike3D(cv,MODEL){
     var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){ac&&ac.abort()},15000);
     fetch("https://overpass-api.de/api/interpreter?data="+encodeURIComponent(q),ac?{signal:ac.signal}:{}).then(function(x){clearTimeout(to);return x.json()}).then(function(j){
       if(!j.elements)throw 0;
-      rad={cx:lat,cy:lon,list:j.elements.map(function(e){return{id:e.id,lat:e.lat,lon:e.lon,ms:(e.tags&&e.tags.maxspeed)||""}})};
+      rad={cx:lat,cy:lon,list:j.elements.map(function(e){return{id:e.id,lat:e.lat,lon:e.lon,ms:(e.tags&&e.tags.maxspeed)||"",dr:(e.tags&&e.tags.direction!=null&&!isNaN(+e.tags.direction))?+e.tags.direction:null}})};
       setJ("radc",rad);
     }).catch(function(){}).then(function(){radBusy=false});
   }
@@ -1681,14 +1681,28 @@ function Bike3D(cv,MODEL){
   function radarStep(){
     if(!radOn||lastLat==null)return;
     radFetch(lastLat,lastLon);
-    var now=Date.now(),best=null,maxd=Math.min(2200,Math.max(900,v*35));
+    var now=Date.now(),best=null,maxd=Math.min(700,Math.max(300,v*18));
     if(v<3||hT==null){if(now-radShown>4000)radToast("");return}
     rad.list.forEach(function(c){
       var d=hav(lastLat,lastLon,c.lat,c.lon);
       if(d>3200&&radW[c.id])delete radW[c.id];
       if(d>maxd)return;
       var b=brg(lastLat,lastLon,c.lat,c.lon),df=Math.abs(((b-hT+540)%360)-180);
-      if(df>45)return;
+      if(c.dr!=null&&Math.abs(((c.dr-hT+540)%360)-180)>100)return;
+      if(nav&&!nav.done&&nav.s0!=null){
+        var co=nav.co,bd=1e9,bs=0,i,cl=Math.cos(c.lat*Math.PI/180)*111320;
+        for(i=0;i<co.length-1;i++){
+          var ax=(co[i][1]-c.lon)*cl,ay=(co[i][0]-c.lat)*110540,bx=(co[i+1][1]-c.lon)*cl,by=(co[i+1][0]-c.lat)*110540,dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy,
+              u=l2?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/l2)):0,px=ax+u*dx,py=ay+u*dy,dd=Math.sqrt(px*px+py*py);
+          if(dd<bd){bd=dd;bs=nav.cum[i]+u*(nav.cum[i+1]-nav.cum[i])}
+        }
+        var ds=bs-nav.s0;
+        if(bd>35||ds<0||ds>maxd)return;
+        d=ds;
+      }else{
+        if(df>25||d*Math.sin(df*Math.PI/180)>45)return;
+        var pd0=radP[c.id];radP[c.id]=d;if(pd0!=null&&d>pd0+3)return;
+      }
       if(!best||d<best.d)best={c:c,d:d};
     });
     if(!best){if(now-radShown>4000)radToast("");return}
@@ -1726,7 +1740,7 @@ function Bike3D(cv,MODEL){
   function toggleDemo(){
     if(demo){
       demo=false;clearInterval(dtimer);gate=dbk?dbk.gate:null;dbk=null;v=0;lapSkew=null;lapReset();circUi();$("dem").classList.remove("on");$("dem").textContent="D\u00E9mo";f=0;frozen=true;
-      setH("spd",'-- <small>km/h</small>');document.body.classList.remove("alert");$("msg").textContent="D\u00E9mo termin\u00E9e.";draw();return;
+      spdT=null;setH("spd",'-- <small>km/h</small>');document.body.classList.remove("alert");$("msg").textContent="D\u00E9mo termin\u00E9e.";draw();return;
     }
     if(on||test){$("msg").textContent="Termine d\u2019abord la sortie ou le test.";return}
     demo=true;frozen=false;dt0=Date.now();maxL=maxR=0;armed=true;lapSkew=0;
@@ -1735,7 +1749,7 @@ function Bike3D(cv,MODEL){
     $("msg").textContent="Mode d\u00E9mo : valeurs simul\u00E9es (circuit compris, onglet Circuit), rien n\u2019est enregistr\u00E9.";
     dtimer=setInterval(function(){
       var t=(Date.now()-dt0)/1000;f=52*Math.sin(t*.7)*Math.min(1,t/3);
-      setH("spd",Math.round(62+28*Math.sin(t*.35))+' <small>km/h</small>');
+      spdT=62+28*Math.sin(t*.35);
       if(f>maxR)maxR=f;if(-f>maxL)maxL=-f;checkAlert();
       v=(62+28*Math.sin(t*.35))/3.6;demoLap(t);draw();
     },30);
@@ -1880,7 +1894,7 @@ function Bike3D(cv,MODEL){
   }
   function stopNav(){
     nav=null;if(routeLine){map.removeLayer(routeLine);routeLine=null}if(destMk)map.removeLayer(destMk);
-    $("ins").style.display="none";navCT="";curveRefresh();
+    $("ins").style.display="none";navCT="";curveRefresh();$("hud").classList.remove("nv");
   }
   function ptAt(co,cum,s){
     var lo=0,hi=cum.length-1;while(hi-lo>1){var mid=(lo+hi)>>1;if(cum[mid]<=s)lo=mid;else hi=mid}
@@ -1920,6 +1934,8 @@ function Bike3D(cv,MODEL){
     }
     nav.k=k;nav.dn=dn;
     var seg=(nav.cum[bi+1]||nav.cum[bi])-nav.cum[bi],s0=nav.cum[bi]+bu*seg,rem=Math.max(0,nav.tot-s0),dd=hav(lat,lon,nav.dest[0],nav.dest[1]);
+    nav.s0=s0;
+    if(!nav.done){var eta=new Date(Date.now()+nav.dur*rem/nav.tot*1000);$("hud").classList.add("nv");setT("hudv",pad(eta.getHours())+":"+pad(eta.getMinutes()));setT("hudd",fmtD(rem))}
     var cv=curveAhead(s0);
     navCT=(cv&&cv.dist<300&&!nav.done)?"\u26A0 Virage serr\u00E9 \u00E0 "+cv.dir+" dans "+fmtD(cv.dist):"";curveRefresh();
     if(dd<35||(k>=st.length-1)){
@@ -2093,7 +2109,7 @@ function Bike3D(cv,MODEL){
   $("tutb").onclick=function(){tools(false);tutoShow(0)};
   (function(){var s="";try{s=localStorage.getItem("tuto")}catch(e){}if(!s)setTimeout(function(){if(!$("hist").classList.contains("open"))tutoShow(0)},600)})();
   function bkCard(l){var m=bkDue();return m?'<div class="card mi" style="border-color:#ffb703"><div class="rt"><b>\uD83D\uDCBE Pense \u00E0 sauvegarder</b></div><div class="rs"><span>'+m+' Touche Sauvegarder, puis Enregistrer dans Fichiers (iCloud Drive).</span></div></div>':""}
-  var BK_KEYS=["theme","ks2","dl","rad","radc","thr","rmode","paint","bike3","k","favs","recents","bike","bikes","wup","gate","goals","tcn","cty","circ","tank","brk","amis","pseudo","rain","autobk","acc","tuto","voice","notes","short","nav","eco","fx3","paint2","zoom3d"];
+  var BK_KEYS=["theme","ks2","dl","rad","radc","thr","rmode","paint","bike3","k","favs","recents","bike","bikes","wup","gate","goals","tcn","cty","circ","tank","brk","amis","pseudo","rain","autobk","acc","tuto","voice","notes","short","nav","eco","woff","dl","fx3","paint2","zoom3d"];
   function bkOk(k){return BK_KEYS.indexOf(k)>=0||/^(maint|kmt|fuel|tyres)(_b\d+)?$/.test(k)}
   function bkAllKeys(){var ks=BK_KEYS.slice();bikes().forEach(function(b){["maint","kmt","fuel","tyres"].forEach(function(n){ks.push(b.id==="b1"?n:n+"_"+b.id)})});return ks}
   function doBackup(){
@@ -2724,7 +2740,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 95 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 98 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
