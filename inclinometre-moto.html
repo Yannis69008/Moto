@@ -636,7 +636,17 @@ function Bike3D(cv,MODEL){
     }
     if(tA[3]>20)lampT=[tA[0]/tA[3],tA[1]/tA[3],tA[2]/tA[3]];if(hA[3]>20)lampH=[0,hA[1]/hA[3],hA[2]/hA[3]];
     IDX=new Uint16Array(nF*3);for(i=0;i<nF*3;i++)IDX[i]=I[i]+g0;
-    nIdx=nF*3;total=g0+nV;useModel=true;
+    /* feux ajoutes sur les modeles qui n'en ont pas */
+    var addI=[];
+    function lampBox(c,w,hh,d,col){var s0=D.length/10;box(c,w,hh,d,col,4);for(var q=s0;q<D.length/10;q++)addI.push(q)}
+    function edge(sgn){var zb=sgn>0?-9:9,k,x,y,z;
+      for(k=g0;k<g0+nV;k++){x=D[k*10];y=D[k*10+1];z=D[k*10+2];if(y>.72&&y<1.25&&Math.abs(x)<.15&&(sgn>0?z>zb:z<zb))zb=z}
+      var sy=0,n=0;for(k=g0;k<g0+nV;k++){x=D[k*10];y=D[k*10+1];z=D[k*10+2];if(y>.72&&y<1.25&&Math.abs(x)<.15&&Math.abs(z-zb)<.08){sy+=y;n++}}
+      return n?[zb,sy/n]:null}
+    if(!lampT){var et=edge(1);if(et){lampT=[0,et[1]-.02,et[0]-.01];lampBox(lampT,.17,.045,.05,[.95,.10,.12])}}
+    if(!lampH){var eh=edge(-1);if(eh){lampH=[0,eh[1]-.03,eh[0]+.02];lampBox(lampH,.15,.07,.05,[1,.97,.8])}}
+    if(addI.length){var I2=new Uint16Array(IDX.length+addI.length);I2.set(IDX);I2.set(addI,IDX.length);IDX=I2}
+    nIdx=IDX.length;total=D.length/10;useModel=true;
   }
   if(!init())return null;
   cv.addEventListener("webglcontextlost",function(e){e.preventDefault();ready=false},false);
@@ -882,7 +892,7 @@ function Bike3D(cv,MODEL){
   try{r3=Bike3D($("rbike3d"),M3D);if(r3){$("rwrap").classList.add("b3")}}catch(e){r3=null}
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(b3.mode()==="model"?(M3N[M3I]+" 3D"):"moto 3D simple"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v89 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v90 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1},P2=-1,Z3=1;
   try{var fj=JSON.parse(localStorage.getItem("fx3"));if(fj)for(var fk in fj)if(fk in FX3)FX3[fk]=fj[fk]?1:0}catch(e){}
@@ -2611,7 +2621,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 89 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 90 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
