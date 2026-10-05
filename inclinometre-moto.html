@@ -750,7 +750,7 @@ function Bike3D(cv,MODEL){
   try{r3=Bike3D($("rbike3d"),window.BIKE_MODEL);if(r3){$("rwrap").classList.add("b3")}}catch(e){r3=null}
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(b3.mode()==="model"?"MT-09 3D":"moto 3D simple"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v75 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v76 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   if(b3){
     
@@ -832,10 +832,10 @@ function Bike3D(cv,MODEL){
   function setT(id,v){if(cc[id]!==v){cc[id]=v;$(id).textContent=v}}
   function setH(id,v){if(cc[id]!==v){cc[id]=v;$(id).innerHTML=v}}
   /* ---------- mode circuit : chrono de tours ---------- */
-  var gate=getJ("gate",null),lap={on:false,t0:0,max:0,mL:0,mR:0,vmax:0,n:0,last:null,best:null,laps:[],trs:[],tr:[[0,0]],dist:0,bestTr:null,len:0,secB:[1e9,1e9,1e9],flash:null},lapPrev=null;
+  var gate=getJ("gate",null),lap={on:false,t0:0,max:0,mL:0,mR:0,vmax:0,n:0,last:null,best:null,laps:[],trs:[],tr:[[0,0]],dist:0,bestTr:null,len:0,secB:[1e9,1e9,1e9],flash:null},lapPrev=null,lapSkew=null,ldv=null,ldT=0;
   function fmtLap(ms){if(ms==null)return"—";var s=ms/1000,m=Math.floor(s/60);s=s-m*60;return m+":"+(s<10?"0":"")+s.toFixed(2).replace(".",",")}
   function fmtDelta(ms){var a=Math.abs(ms)/1000;return(ms<0?"−":"+")+a.toFixed(2).replace(".",",")}
-  function lapReset(){lap={on:false,t0:0,max:0,mL:0,mR:0,vmax:0,n:0,last:null,best:null,laps:[],trs:[],tr:[[0,0]],dist:0,bestTr:null,len:0,secB:[1e9,1e9,1e9],flash:null};lapPrev=null;cc.clk=null;circApply()}
+  function lapReset(){lap={on:false,t0:0,max:0,mL:0,mR:0,vmax:0,n:0,last:null,best:null,laps:[],trs:[],tr:[[0,0]],dist:0,bestTr:null,len:0,secB:[1e9,1e9,1e9],flash:null};lapPrev=null;ldv=null;cc.clk=null;circApply()}
   function tAt(tr,d){
     if(!tr||tr.length<2)return 0;if(d<=0)return 0;
     for(var i=1;i<tr.length;i++){if(tr[i][0]>=d){var a=tr[i-1],b=tr[i],s=b[0]-a[0];return a[1]+(s>0?(d-a[0])/s:0)*(b[1]-a[1])}}
@@ -858,6 +858,7 @@ function Bike3D(cv,MODEL){
   }
   function lapStep(lat,lon,ts){
     circDetect(lat,lon);brkStep();rainCheck(lat,lon);
+    if(!demo&&ts){var sk=Date.now()-ts;lapSkew=lapSkew==null?sk:lapSkew+(sk-lapSkew)*(sk<lapSkew?.5:.05)}
     if(demo||!gate||!ride){if(!demo)lapPrev=null;return}
     var cl=Math.cos(gate.lat*Math.PI/180),x=(lon-gate.lon)*cl*111320,y=(lat-gate.lat)*110540,
         dx=Math.sin(gate.hd*Math.PI/180),dy=Math.cos(gate.hd*Math.PI/180),s=x*dx+y*dy,done=false;
@@ -872,7 +873,7 @@ function Bike3D(cv,MODEL){
     lapPrev={x:x,y:y,s:s,t:ts,r:Date.now()};
     if(lap.on&&v*3.6>lap.vmax)lap.vmax=v*3.6;
   }
-  function lapEl(now){return lapPrev?(lapPrev.t-lap.t0)+Math.max(0,now-lapPrev.r):now-lap.t0}
+  function lapEl(now){return lapSkew!=null?now-lapSkew-lap.t0:(lapPrev?(lapPrev.t-lap.t0)+Math.max(0,now-lapPrev.r):now-lap.t0)}
   function lapDelta(){
     var L=lap.trs;if(!L.length)return null;var a=L[L.length-1],ref=null;
     if(lap.bestTr&&lap.bestTr!==a.tr)ref=lap.bestTr;
@@ -906,8 +907,8 @@ function Bike3D(cv,MODEL){
     var de=$("cdl"),dv=null;
     if(lap.on&&lap.bestTr&&lapPrev){var dn=lap.dist+v*Math.min(1.5,Math.max(0,(now-lapPrev.r)/1000));dv=lapEl(now)-tAt(lap.bestTr,dn)}
     if(fl&&lap.best!=null&&lap.laps.length>1){dv=fl.ms-lap.best;if(fl.best&&lap.laps.length>1){var pb=lap.laps.slice(0,-1).reduce(function(m,q){return Math.min(m,q.ms)},1e12);dv=fl.ms-pb}}
-    if(dv==null){setT("cdlv","—");de.className=""}
-    else{setT("cdlv",fmtDelta(dv));de.className=dv<=0?"ah":"bh"}
+    if(dv==null){ldv=null;setT("cdlv","—");de.className=""}
+    else{ldv=ldv==null?dv:ldv+(dv-ldv)*.18;var pn=performance.now();if(pn-ldT>90||fl){ldT=pn;setT("cdlv",fmtDelta(ldv));de.className=ldv<=0?"ah":"bh"}}
   }
   function lapDraw(){
     var now=Date.now(),fl=lap.flash&&now<lap.flash.until?lap.flash:null;
@@ -1494,11 +1495,11 @@ function Bike3D(cv,MODEL){
   }
   function toggleDemo(){
     if(demo){
-      demo=false;clearInterval(dtimer);gate=dbk?dbk.gate:null;dbk=null;v=0;lapReset();circUi();$("dem").classList.remove("on");$("dem").textContent="D\u00E9mo";f=0;frozen=true;
+      demo=false;clearInterval(dtimer);gate=dbk?dbk.gate:null;dbk=null;v=0;lapSkew=null;lapReset();circUi();$("dem").classList.remove("on");$("dem").textContent="D\u00E9mo";f=0;frozen=true;
       setH("spd",'-- <small>km/h</small>');document.body.classList.remove("alert");$("msg").textContent="D\u00E9mo termin\u00E9e.";draw();return;
     }
     if(on||test){$("msg").textContent="Termine d\u2019abord la sortie ou le test.";return}
-    demo=true;frozen=false;dt0=Date.now();maxL=maxR=0;armed=true;
+    demo=true;frozen=false;dt0=Date.now();maxL=maxR=0;armed=true;lapSkew=0;
     dbk={gate:gate};gate={lat:45,lon:5,hd:0,id:-1};lapReset();dl={t0:0,T:26000,tr:0};
     $("dem").classList.add("on");$("dem").textContent="Arr\u00EAter la d\u00E9mo";
     $("msg").textContent="Mode d\u00E9mo : valeurs simul\u00E9es (circuit compris, onglet Circuit), rien n\u2019est enregistr\u00E9.";
@@ -2411,7 +2412,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèle 3D : « 2025 Yamaha MT-09 SP V4 » par VTX (sketchfab.com/VTX_car), licence CC BY-NC-SA 4.0. Modèle simplifié et recoloré. Usage non commercial. Version 75 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèle 3D : « 2025 Yamaha MT-09 SP V4 » par VTX (sketchfab.com/VTX_car), licence CC BY-NC-SA 4.0. Modèle simplifié et recoloré. Usage non commercial. Version 76 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
