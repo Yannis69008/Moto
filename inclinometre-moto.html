@@ -74,8 +74,12 @@ button#start{flex:1.6;background:linear-gradient(135deg,#ff8a4c,#ff4f8b);color:#
 #tuto .ti{font-size:64px;line-height:1.1;margin-bottom:10px}#tuto h2{font-size:24px;margin:0 0 10px}#tuto p{font-size:16px;line-height:1.45;margin:0 8px 18px;color:var(--fg)}
 #tuto .dots{display:flex;gap:8px;justify-content:center;margin:6px 0 18px}#tuto .dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}#tuto .dots i.on{background:var(--fg)}
 #tuto .btns{margin-top:0}
+.seg{grid-template-columns:repeat(3,1fr)!important}.seg button{padding:11px 2px!important;font-size:14px!important}
+#hq{margin-top:8px}#hq button{padding:12px 6px;font-size:16px;border-radius:16px;font-weight:700;min-width:0}#hq:empty{display:none}
+.nt{padding:10px 14px;margin-bottom:8px}.nt .nd{font-size:12px;color:var(--mut);margin-bottom:4px}.nt .nx{white-space:pre-wrap;word-break:break-word;font-size:16px;line-height:1.35}.nt .btns{margin-top:8px}.nt .btns button{padding:9px 6px;font-size:14px}
 .legend{font-size:13px;color:var(--mut);margin:8px 2px}
 @media (orientation:landscape) and (max-height:520px){
+  #hq{display:none}
   body{max-width:none;display:grid;grid-template-columns:1.15fr 1fr;grid-template-rows:auto auto auto auto 1fr;column-gap:12px;row-gap:8px;padding:8px 16px}
   .top{grid-column:2;grid-row:1}.stage{grid-column:1;grid-row:1/-1;padding:10px}
   .dash{grid-column:2;grid-row:2}.maxes{grid-column:2;grid-row:3}.btns{grid-column:2;grid-row:4}#msg{grid-column:2;grid-row:5;align-self:start}
@@ -387,11 +391,12 @@ body.cmode .dash,body.cmode .gs,body.cmode .btns3,body.cmode #wup,body.cmode #mr
   <button id="start">D&eacute;marrer</button>
   <button id="hbtn">Stats</button><button id="tlb">⚙ Outils</button>
 </div>
+<div class="btns btns3" id="hq"></div>
 <div class="btns btns2" id="tools"><div class="sh"><span>Outils</span><button class="pill" id="tlx">Fermer</button></div>
   <button id="wub" class="sm">Préchauffage</button><button id="wxb" class="sm">Météo</button>
   <button id="rdb" class="sm">Radars on</button><button id="alt" class="sm">Alerte off</button>
   <button id="dem" class="sm">D&eacute;mo</button><button id="rst" class="sm">Reset max</button>
-  <button id="brkb" class="sm">Pause</button><button id="rnb" class="sm">Pluie</button><button id="dimb" class="sm">Écran épuré</button><button id="balb" class="sm">Balades</button><button id="stab" class="sm">Stations</button><button id="rawb" class="sm">Données brutes</button><button id="rawx" class="sm">Exporter brutes</button><button id="voxb" class="sm">Voix : non</button><button id="rtb" class="sm">Belles routes</button><button id="tutb" class="sm">Aide / tuto</button>
+  <button id="brkb" class="sm">Pause</button><button id="rnb" class="sm">Pluie</button><button id="dimb" class="sm">Écran épuré</button><button id="balb" class="sm">Balades</button><button id="stab" class="sm">Stations</button><button id="rawb" class="sm">Données brutes</button><button id="rawx" class="sm">Exporter brutes</button><button id="voxb" class="sm">Voix : non</button><button id="rtb" class="sm">Belles routes</button><button id="cfgb" class="sm">Accueil et navigation</button><button id="tutb" class="sm">Aide / tuto</button>
 </div><div id="tbk"></div>
 <div id="endov" class="ov"></div><div id="tuto" class="ov"></div><div id="balov" class="ov"></div><div id="brk" style="display:none"></div><div id="dim"><div id="dima">0°</div><div id="dims">0 <small>km/h</small></div><div id="dimg"></div><p>Touche l’écran pour revenir</p></div><p id="mrem" style="display:none"></p><p id="wx" style="display:none"></p><p id="wup" style="display:none"></p>
 <div id="rad" style="display:none"></div><p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
@@ -745,7 +750,7 @@ function Bike3D(cv,MODEL){
   try{r3=Bike3D($("rbike3d"),window.BIKE_MODEL);if(r3){$("rwrap").classList.add("b3")}}catch(e){r3=null}
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(b3.mode()==="model"?"MT-09 3D":"moto 3D simple"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v73 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v75 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   if(b3){
     
@@ -892,19 +897,23 @@ function Bike3D(cv,MODEL){
     tx.textContent=(s[wi]>0?"Tu perds le plus au secteur ":"Tu gagnes le plus au secteur ")+(wi+1)+" : "+fmtDelta(s[wi])+" s"+(" · total "+fmtDelta(y[100])+" s")+".";
   }
   function secColor(ms,k){return ms<=lap.secB[k]+1?"#a855f7":"#facc15"}
-  function lapDraw(){
+  function lapLive(){
     var now=Date.now(),fl=lap.flash&&now<lap.flash.until?lap.flash:null;
     var ct=$("ctime");
     if(fl){setT("ctime",fmtLap(fl.ms));ct.style.color=fl.best?"#a855f7":"#facc15"}
     else{setT("ctime",lap.on?fmtLap(Math.max(0,lapEl(now))):"0:00,00");ct.style.color=""}
-    setT("clapn",lap.on?"TOUR "+(lap.n+1):(gate?"PRÊT":"—"));
-    setT("cstat",!gate?"Définis le départ":((!ride&&!demo)?"Touche Démarrer":(lap.on?(lap.bestTr?"Réf. "+fmtLap(lap.best):"Tour de référence"):"Passe la ligne pour lancer")));
     /* delta live contre le meilleur tour */
     var de=$("cdl"),dv=null;
     if(lap.on&&lap.bestTr&&lapPrev){var dn=lap.dist+v*Math.min(1.5,Math.max(0,(now-lapPrev.r)/1000));dv=lapEl(now)-tAt(lap.bestTr,dn)}
     if(fl&&lap.best!=null&&lap.laps.length>1){dv=fl.ms-lap.best;if(fl.best&&lap.laps.length>1){var pb=lap.laps.slice(0,-1).reduce(function(m,q){return Math.min(m,q.ms)},1e12);dv=fl.ms-pb}}
     if(dv==null){setT("cdlv","—");de.className=""}
     else{setT("cdlv",fmtDelta(dv));de.className=dv<=0?"ah":"bh"}
+  }
+  function lapDraw(){
+    var now=Date.now(),fl=lap.flash&&now<lap.flash.until?lap.flash:null;
+    lapLive();
+    setT("clapn",lap.on?"TOUR "+(lap.n+1):(gate?"PRÊT":"—"));
+    setT("cstat",!gate?"Définis le départ":((!ride&&!demo)?"Touche Démarrer":(lap.on?(lap.bestTr?"Réf. "+fmtLap(lap.best):"Tour de référence"):"Passe la ligne pour lancer")));
     setT("clast",fmtLap(lap.last));setT("cbest",fmtLap(lap.best));
     var cb=$("clast");cb.style.color=lap.last==null?"":(lap.last===lap.best?"#a855f7":"#facc15");
     var sm=0,okI=true;lap.secB.forEach(function(x){if(x>=1e9)okI=false;else sm+=x});setT("cidl",okI?fmtLap(sm):"—");
@@ -1045,7 +1054,7 @@ function Bike3D(cv,MODEL){
       if(!pl.stops.length)hx+='<div class="stp"><b></b><span>Pas de pause nécessaire sur cette distance.</span></div>';
       pl.stops.forEach(function(s,i){hx+='<div class="stp"><b>'+hhmm(s.eta)+'</b><div>'+(s.t==="fuel"?"⛽ Plein vers le km "+Math.round(s.km):"☕ Pause café vers le km "+Math.round(s.km))+' ('+s.min+' min)<br><button class="pill" data-q="'+s.lat.toFixed(4)+","+s.lon.toFixed(4)+","+(s.t==="fuel"?"Station-service":"Café")+'">Chercher à proximité</button></div></div>'});
       hx+='<div class="stp"><b>'+hhmm(pl.end)+'</b><span>Arrivée estimée (durée +20 % pour la route moto, pauses incluses)</span></div></div>';
-      hx+='<div class="btns" style="margin-bottom:8px"><button id="balgo">Démarrer sur la carte</button><button id="balsh">Partager le lien</button></div><div class="btns"><button id="balap">Ouvrir dans Plans</button><button id="balre">Autre boucle</button></div>';
+      hx+='<div class="btns" style="margin-bottom:8px"><button id="balgo">Démarrer sur la carte</button><button id="balsh">Partager le lien</button></div><div class="btns"><button id="balap">Ouvrir dans '+NAVN[navK]+'</button><button id="balre">Autre boucle</button></div>';
     }
     var o=$("balov");o.innerHTML=hx;o.classList.add("open");
   }
@@ -1064,6 +1073,31 @@ function Bike3D(cv,MODEL){
     out[out.length-1]=[p[p.length-1][0],p[p.length-1][1]];return out;
   }
   $("balb").onclick=function(){tools(false);balView("")};
+  /* raccourcis d'accueil et choix de navigation */
+  var SCUT=[["balb","Balades"],["rtb","Routes"],["stab","Stations"],["wxb","M\u00E9t\u00E9o"],["dimb","\u00C9cran \u00E9pur\u00E9"],["dem","D\u00E9mo"]],
+      shortSel=getJ("short",["balb","rtb","stab"]),navK="plans";try{navK=localStorage.getItem("nav")||"plans"}catch(e){}
+  var NAVN={plans:"Plans",waze:"Waze",gmaps:"Google Maps"};
+  function shortDraw(){var hq=$("hq");hq.innerHTML=SCUT.filter(function(s){return shortSel.indexOf(s[0])>=0}).map(function(s){return'<button data-sh="'+s[0]+'">'+s[1]+'</button>'}).join("")}
+  $("hq").onclick=function(e){var id=e.target.getAttribute&&e.target.getAttribute("data-sh");if(id&&$(id))$(id).click()};
+  shortDraw();
+  function navRoute(pts){
+    var d=pts.slice(1),o=pts[0],u;
+    if(navK==="waze"){u="https://waze.com/ul?ll="+d[0][0]+","+d[0][1]+"&navigate=yes";$("msg").textContent="Waze ne g\u00E8re pas les \u00E9tapes : il t\u2019emm\u00E8ne au d\u00E9but de la route."}
+    else if(navK==="gmaps"){u="https://www.google.com/maps/dir/?api=1&travelmode=driving&origin="+o[0]+","+o[1]+"&destination="+d[d.length-1][0]+","+d[d.length-1][1]+(d.length>1?"&waypoints="+d.slice(0,-1).map(function(q){return q[0]+","+q[1]}).join("%7C"):"")}
+    else u="https://maps.apple.com/?saddr="+o[0]+","+o[1]+"&daddr="+d.map(function(q){return q[0]+","+q[1]}).join("+to:");
+    window.open(u,"_blank")}
+  function navPoint(lat,lon){
+    window.open(navK==="waze"?"https://waze.com/ul?ll="+lat+","+lon+"&navigate=yes":navK==="gmaps"?"https://www.google.com/maps/dir/?api=1&travelmode=driving&destination="+lat+","+lon:"https://maps.apple.com/?daddr="+lat+","+lon+"&dirflg=d","_blank")}
+  function navSearch(name,lat,lon){
+    window.open(navK==="waze"?"https://waze.com/ul?q="+encodeURIComponent(name)+"&ll="+lat+","+lon:navK==="gmaps"?"https://www.google.com/maps/search/"+encodeURIComponent(name)+"/@"+lat+","+lon+",14z":"https://maps.apple.com/?q="+encodeURIComponent(name)+"&ll="+lat+","+lon,"_blank")}
+  window.__nav={s:navSearch,p:navPoint,r:navRoute,k:function(k){navK=k}};
+  function cfgView(){
+    var hx='<div class="hh"><button class="pill" id="balx">Fermer</button><h2>Accueil et navigation</h2><span></span></div><div class="sec">Raccourcis sur l\u2019\u00E9cran d\u2019accueil</div><p class="legend" style="margin:0 2px 4px">Touche pour afficher ou masquer un raccourci sous Stats / Outils.</p><div class="chips">'+
+      SCUT.map(function(s){return'<button data-sc="'+s[0]+'"'+(shortSel.indexOf(s[0])>=0?' class="on"':'')+'>'+s[1]+'</button>'}).join("")+
+      '</div><div class="sec">Application de navigation</div><p class="legend" style="margin:0 2px 4px">Utilis\u00E9e par \u00AB Ouvrir dans\u2026 \u00BB, \u00AB Y aller \u00BB et \u00AB Chercher \u00E0 proximit\u00E9 \u00BB. Waze ne g\u00E8re qu\u2019une destination : pour une route, il va au d\u00E9but.</p><div class="chips">'+
+      ["plans","waze","gmaps"].map(function(k){return'<button data-nv="'+k+'"'+(navK===k?' class="on"':'')+'>'+NAVN[k]+'</button>'}).join("")+'</div>';
+    var o=$("balov");o.innerHTML=hx;o.classList.add("open")}
+  $("cfgb").onclick=function(){tools(false);cfgView()};
   /* belles routes autour de toi (sinuosit\u00E9 des routes OpenStreetMap) */
   var rts=[],rtR=25;
   function chainsOf(ways){
@@ -1102,7 +1136,7 @@ function Bike3D(cv,MODEL){
     return out.slice(0,12)}
   function routesView(note){
     var hx='<div class="hh"><button class="pill" id="balx">Fermer</button><h2>Belles routes</h2><span></span></div><p class="legend" style="margin:0 2px 4px">Routes sinueuses autour de ta position, class\u00E9es d\u2019apr\u00E8s leur trac\u00E9 (OpenStreetMap). L\u2019app ne conna\u00EEt pas l\u2019\u00E9tat du rev\u00EAtement ni le trafic.</p><div class="chips">'+[15,25,40].map(function(k){return'<button data-rr="'+k+'"'+(k===rtR?' class="on"':'')+'>'+k+' km</button>'}).join("")+'</div><p class="legend" id="rtm" style="margin:0 2px 8px">'+esc(note||"")+'</p>';
-    rts.forEach(function(x,i){hx+='<div class="card" style="padding:10px 14px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(x.name)+'</b><span style="color:#ffb703;white-space:nowrap">'+"\u2605".repeat(x.st)+"\u2606".repeat(5-x.st)+'</span></div><div class="legend" style="margin:2px 0 8px">'+x.len.toFixed(0)+' km \u00B7 \u00E0 '+x.d.toFixed(0)+' km de toi \u00B7 '+Math.round(x.cv)+'\u00B0 de virage par km</div><div class="btns"><button data-rt="'+i+'">Faire cette route</button><button data-rp="'+i+'">Plans</button></div></div>'});
+    rts.forEach(function(x,i){hx+='<div class="card" style="padding:10px 14px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(x.name)+'</b><span style="color:#ffb703;white-space:nowrap">'+"\u2605".repeat(x.st)+"\u2606".repeat(5-x.st)+'</span></div><div class="legend" style="margin:2px 0 8px">'+x.len.toFixed(0)+' km \u00B7 \u00E0 '+x.d.toFixed(0)+' km de toi \u00B7 '+Math.round(x.cv)+'\u00B0 de virage par km</div><div class="btns"><button data-rt="'+i+'">Faire cette route</button><button data-rp="'+i+'">Ouvrir dans '+NAVN[navK]+'</button></div></div>'});
     var o=$("balov");o.innerHTML=hx;o.classList.add("open")}
   function routesLoad(R){
     rtR=R;rts=[];routesView("Recherche des routes\u2026 (peut prendre 20 secondes)");
@@ -1122,18 +1156,20 @@ function Bike3D(cv,MODEL){
   $("balov").onclick=function(e){
     var t=e.target;
     if(t.id==="balx")this.classList.remove("open");
+    else if(t.getAttribute&&t.getAttribute("data-sc")){var sid=t.getAttribute("data-sc"),si=shortSel.indexOf(sid);if(si>=0)shortSel.splice(si,1);else shortSel.push(sid);setJ("short",shortSel);shortDraw();cfgView()}
+    else if(t.getAttribute&&t.getAttribute("data-nv")){navK=t.getAttribute("data-nv");try{localStorage.setItem("nav",navK)}catch(x){}cfgView()}
     else if(t.getAttribute&&t.getAttribute("data-rr")){routesLoad(+t.getAttribute("data-rr"))}
     else if(t.getAttribute&&t.getAttribute("data-rt")){var rx=rts[+t.getAttribute("data-rt")];if(!rx)return;if(lastLat==null){gps();return}var rm=$("rtm");if(rm)rm.textContent="Calcul de l\u2019itin\u00E9raire\u2026";balRoute(rtPts(rx),rx.name,function(err){if(err){var m2=$("rtm");if(m2)m2.textContent="Impossible de calculer (internet requis).";return}balView("")})}
-    else if(t.getAttribute&&t.getAttribute("data-rp")){var ry=rts[+t.getAttribute("data-rp")];if(!ry)return;var pp=rtPts(ry);window.open("https://maps.apple.com/?saddr="+pp[0][0]+","+pp[0][1]+"&daddr="+pp.slice(1).map(function(q){return q[0]+","+q[1]}).join("+to:"),"_blank")}
+    else if(t.getAttribute&&t.getAttribute("data-rp")){var ry=rts[+t.getAttribute("data-rp")];if(!ry)return;navRoute(rtPts(ry))}
     else if(t.getAttribute&&t.getAttribute("data-lp")){balSeed=Math.floor(Math.random()*360);balLoop(+t.getAttribute("data-lp"));bal&&0}
     else if(t.id==="balre"&&bal){var m=/(\d+) km/.exec(bal.name);balSeed=(balSeed+110)%360;balLoop(m?+m[1]:60)}
     else if(t.id==="balrx"&&balPend){balMsg("Calcul…");var pp=balPend.w;balRoute(pp,balPend.n||"Parcours reçu",function(err){if(err){balMsg("Impossible de calculer (internet requis).");return}balPend=null;balView("")})}
     else if(t.id==="balgo"&&bal){$("balov").classList.remove("open");if(!mapOn){if(!mapOk()){$("msg").textContent="Carte indisponible : il faut une connexion internet.";return}toggleMap()}
       setTimeout(function(){var pt=bal.pts,d=pt[pt.length-1];setRoute({co:bal.co,steps:bal.steps,dur:bal.dur},d,true,pt.slice(1,-1),ROUTE_MODE)},120)}
     else if(t.id==="balsh"&&bal)shareLink(bal.name,bal.pts);
-    else if(t.id==="balap"&&bal){var pt2=bal.pts,u="https://maps.apple.com/?saddr="+pt2[0][0]+","+pt2[0][1]+"&daddr="+pt2.slice(1).map(function(q){return q[0]+","+q[1]}).join("+to:");window.open(u,"_blank")}
-    else if(t.getAttribute&&t.getAttribute("data-q")){var q=t.getAttribute("data-q").split(",");window.open("https://maps.apple.com/?q="+encodeURIComponent(q[2])+"&ll="+q[0]+","+q[1],"_blank")}
-    else if(t.getAttribute&&t.getAttribute("data-st")){var c=t.getAttribute("data-st").split(",");window.open("https://maps.apple.com/?daddr="+c[0]+","+c[1]+"&dirflg=d","_blank")}
+    else if(t.id==="balap"&&bal){navRoute(bal.pts)}
+    else if(t.getAttribute&&t.getAttribute("data-q")){var q=t.getAttribute("data-q").split(",");navSearch(q[2],q[0],q[1])}
+    else if(t.getAttribute&&t.getAttribute("data-st")){var c=t.getAttribute("data-st").split(",");navPoint(c[0],c[1])}
   };
   $("balov").onchange=function(e){if(e.target.id==="rtt")balView("")};
   /* stations-service autour de toi */
@@ -1207,9 +1243,9 @@ function Bike3D(cv,MODEL){
     if(yaw!==0&&moving()&&!gdrag){yaw*=Math.exp(-dt/.15);if(Math.abs(yaw)<.01)yaw=0;if(b3)b3.setYaw(yaw)}
     if(t-gLastS>60){gLastS=t;gH.push([t,gLat,gLon]);while(gH.length&&t-gH[0][0]>22000)gH.shift()}
     if(vw==="g"&&t-gLastD>50){gLastD=t;gDraw(t)}
-    else if(vw==="c"&&t-gLastD>100){gLastD=t;lapDraw()}
+    else if(vw==="c"){lapLive();if(t-gLastD>120){gLastD=t;lapDraw()}}
     disp+=(f-disp)*(1-Math.exp(-dt/.11));
-    if(lastDeg===null||Math.abs(disp-lastDeg)>.02){lastDeg=disp;if(b3)b3.setLean(disp);else $("bikeimg").style.transform="translate3d(0,0,0) rotate("+disp.toFixed(2)+"deg)"}
+    if(vw==="bike"&&(lastDeg===null||Math.abs(disp-lastDeg)>.02)){lastDeg=disp;if(b3)b3.setLean(disp);else $("bikeimg").style.transform="translate3d(0,0,0) rotate("+disp.toFixed(2)+"deg)"}
     if(follow){var dh=((hT-hd+540)%360)-180;hd=(hd+dh*(1-Math.exp(-dt/.3))+360)%360;$("map").style.transform="translateY(9%) rotate("+(-hd).toFixed(1)+"deg)"}
     requestAnimationFrame(frame);
   }
@@ -1825,7 +1861,7 @@ function Bike3D(cv,MODEL){
   $("tutb").onclick=function(){tools(false);tutoShow(0)};
   (function(){var s="";try{s=localStorage.getItem("tuto")}catch(e){}if(!s)setTimeout(function(){if(!$("hist").classList.contains("open"))tutoShow(0)},600)})();
   function bkCard(l){var m=bkDue();return m?'<div class="card mi" style="border-color:#ffb703"><div class="rt"><b>\uD83D\uDCBE Pense \u00E0 sauvegarder</b></div><div class="rs"><span>'+m+' Touche Sauvegarder, puis Enregistrer dans Fichiers (iCloud Drive).</span></div></div>':""}
-  var BK_KEYS=["theme","ks2","dl","rad","radc","thr","rmode","paint","k","favs","recents","bike","bikes","wup","gate","goals","tcn","cty","circ","tank","brk","amis","pseudo","rain","autobk","acc","tuto","voice"];
+  var BK_KEYS=["theme","ks2","dl","rad","radc","thr","rmode","paint","k","favs","recents","bike","bikes","wup","gate","goals","tcn","cty","circ","tank","brk","amis","pseudo","rain","autobk","acc","tuto","voice","notes","short","nav"];
   function bkOk(k){return BK_KEYS.indexOf(k)>=0||/^(maint|kmt|fuel|tyres)(_b\d+)?$/.test(k)}
   function bkAllKeys(){var ks=BK_KEYS.slice();bikes().forEach(function(b){["maint","kmt","fuel","tyres"].forEach(function(n){ks.push(b.id==="b1"?n:n+"_"+b.id)})});return ks}
   function doBackup(){
@@ -2229,6 +2265,15 @@ function Bike3D(cv,MODEL){
     return[["3 sorties ce mois-ci",m.length,3,""],["Une sortie de 100 km",Math.round(big),100," km"],["Un virage à 40°",Math.round(la),40,"°"],["Une note de 80",fl,80,""],["Une route nouvelle (50 % nouveau)",nw,50," %"],["Un tour chronométré",lp,1,""]];
   }
   function badgeSummary(l){var b=badgeList(l),n=b.filter(function(x){return x.ok}).length;return'<button id="tabb2" style="width:100%;margin:8px 0">🏅 Mes badges et défis ( '+n+' / '+b.length+' )</button>'}
+  function notesHtml(l){
+    var N=getJ("notes",[]).slice().sort(function(a,b){return b.t-a.t}),h='<button id="noteadd" style="width:100%;margin:2px 0 12px">\uFF0B Nouvelle note</button>';
+    if(!N.length)h+='<p class="legend" style="margin:0 2px 10px">Aucune note libre. Ex. : pression des pneus, id\u00E9e de route, r\u00E9glage de suspension, \u00E0 faire \u00E0 l\u2019entretien\u2026</p>';
+    N.forEach(function(n){h+='<div class="card nt"><div class="nd">'+new Date(n.t).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})+'</div><div class="nx">'+esc(n.x)+'</div><div class="btns"><button data-ne="'+n.id+'">Modifier</button><button data-nd="'+n.id+'">Supprimer</button></div></div>'});
+    var R=l.filter(function(r){return r.nm||r.nt});
+    h+='<div class="sec">Notes de sorties ( '+R.length+' )</div>';
+    if(!R.length)h+='<p class="legend" style="margin:0 2px 10px">Ouvre une sortie, puis \u00AB Nom et note \u00BB : elle appara\u00EEtra ici.</p>';
+    R.forEach(function(r){h+='<div class="card ride hc nt" data-id="'+r.id+'"><div class="nd">'+new Date(r.t0).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})+' \u00B7 '+Math.round(Math.max(r.mL,r.mR))+'\u00B0 \u00B7 '+km(r).toFixed(0)+' km</div>'+(r.nm?'<b>'+esc(r.nm)+'</b>':'')+(r.nt?'<div class="nx">'+esc(r.nt)+'</div>':'')+'</div>'});
+    return h}
   function badgesTab(l){
     var b=badgeList(l),n=b.filter(function(x){return x.ok}).length,h='<div class="sec">Défis du mois</div>';
     chalList(l).forEach(function(c){var ok=c[1]>=c[2];h+='<div class="card" style="padding:10px 14px;margin-bottom:6px"><div style="display:flex;justify-content:space-between"><b>'+(ok?"✅ ":"")+c[0]+'</b><span style="opacity:.7">'+Math.min(c[1],c[2])+' / '+c[2]+c[3]+'</span></div><div class="gbar"><i style="width:'+Math.min(100,Math.round(c[1]/c[2]*100))+'%;background:'+(ok?"#4ade80":"var(--r)")+'"></i></div></div>'});
@@ -2338,8 +2383,9 @@ function Bike3D(cv,MODEL){
     killDm();CR=co2rate();var l=loadB(),h='<div class="tbar"><div class="hh"><h2 style="text-align:left">Stats · '+esc(bikeName())+'</h2><button class="pill" id="hx">Fermer</button></div>'+
       '<div class="tgrid"><button id="exa"><i>💾</i><u>Sauvegarde</u></button><button id="ima"><i>📥</i><u>Importer</u></button><button id="cmpb"'+(cmpOn?' class="on"':'')+'><i>⚖️</i><u>Comparer</u></button><button id="mnt"><i>🔧</i><u>Entretien</u></button><button id="fuelb"><i>⛽</i><u>Carburant</u></button></div></div>'+
       '<p class="legend" id="imsg" style="margin:0 2px 8px"></p>'+
-      '<div class="seg"><button id="tabr"'+(stTab==="res"?' class="on"':'')+'>Résumé</button><button id="tabh"'+(stTab==="his"?' class="on"':'')+'>Histo · '+l.length+'</button><button id="tabe"'+(stTab==="evo"?' class="on"':'')+'>Évolution</button><button id="tabm"'+(stTab==="map"?' class="on"':'')+'>Carte</button><button id="tabb"'+(stTab==="bad"?' class="on"':'')+'>Badges</button></div>';
-    if(!l.length)h+='<p class="empty">Aucune sortie pour l’instant. Touche Démarrer pour en enregistrer une, ses stats apparaîtront ici.</p>';
+      '<div class="seg"><button id="tabr"'+(stTab==="res"?' class="on"':'')+'>Résumé</button><button id="tabh"'+(stTab==="his"?' class="on"':'')+'>Histo · '+l.length+'</button><button id="tabe"'+(stTab==="evo"?' class="on"':'')+'>Évolution</button><button id="tabm"'+(stTab==="map"?' class="on"':'')+'>Carte</button><button id="tabb"'+(stTab==="bad"?' class="on"':'')+'>Badges</button><button id="tabn"'+(stTab==="notes"?' class="on"':'')+'>Notes</button></div>';
+    if(stTab==="notes")h+=notesHtml(l);
+    else if(!l.length)h+='<p class="empty">Aucune sortie pour l’instant. Touche Démarrer pour en enregistrer une, ses stats apparaîtront ici.</p>';
     else if(stTab==="evo")h+=evoHtml(l);
     else if(stTab==="bad")h+=badgesTab(l);
     else if(stTab==="map"){h+='<div id="amap"></div><p class="legend" id="amn">Touche un trajet pour ouvrir la sortie.</p>';setTimeout(function(){allMap(l)},60)}
@@ -2365,7 +2411,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèle 3D : « 2025 Yamaha MT-09 SP V4 » par VTX (sketchfab.com/VTX_car), licence CC BY-NC-SA 4.0. Modèle simplifié et recoloré. Usage non commercial. Version 73 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèle 3D : « 2025 Yamaha MT-09 SP V4 » par VTX (sketchfab.com/VTX_car), licence CC BY-NC-SA 4.0. Modèle simplifié et recoloré. Usage non commercial. Version 75 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
@@ -2696,6 +2742,9 @@ function Bike3D(cv,MODEL){
   $("hbody").onclick=function(e){
     var t=e.target;
     if(t.closest&&t.closest("summary")){var dd=t.closest("details");if(dd&&dd.getAttribute("data-k")){setTimeout(function(){ACC[dd.getAttribute("data-k")]=dd.open;setJ("acc",ACC)},0)}return}
+    if(t.id==="noteadd"){var nx=prompt("Ta note :","");if(nx&&nx.trim()){var N1=getJ("notes",[]);N1.push({id:Date.now(),t:Date.now(),x:nx.trim()});setJ("notes",N1);list()}return}
+    if(t.getAttribute&&t.getAttribute("data-ne")){var N2=getJ("notes",[]),n2=N2.filter(function(x){return String(x.id)===t.getAttribute("data-ne")})[0];if(n2){var ny=prompt("Modifier la note :",n2.x);if(ny!==null&&ny.trim()){n2.x=ny.trim();setJ("notes",N2);list()}}return}
+    if(t.getAttribute&&t.getAttribute("data-nd")){if(confirm("Supprimer cette note ?")){setJ("notes",getJ("notes",[]).filter(function(x){return String(x.id)!==t.getAttribute("data-nd")}));list()}return}
     if(t.id==="hx"){killDm();$("hist").classList.remove("open")}
     else if(t.id==="hb")list();
     else if(t.id==="tankb"){var tk=prompt("Taille du r\u00E9servoir en litres ?",localStorage.getItem("tank")||"14");if(tk!==null){var tv=parseFloat(String(tk).replace(",","."));if(tv>=3&&tv<=40){try{localStorage.setItem("tank",String(tv))}catch(e){}list()}}}
@@ -2705,7 +2754,7 @@ function Bike3D(cv,MODEL){
     else if(t.id==="rshare"&&cur&&cur.p.length>=2){var pts=evenPts(cur.p.map(function(q){return[q[0],q[1]]}),Math.min(16,Math.max(2,Math.round(km(cur)/4)+2)));shareLink(cur.nm||("Parcours du "+new Date(cur.t0).toLocaleDateString("fr-FR")),pts)}
     else if(t.id==="goalb"){var gg=getJ("goals",{km:0}),v=prompt("Objectif de km par mois (0 pour retirer)",gg.km||"500");if(v!==null){gg.km=Math.max(0,parseInt(v,10)||0);setJ("goals",gg);list()}}
     else if(t.closest&&t.closest("[data-cr]")){var kk=t.closest("[data-cr]").getAttribute("data-cr");crOpen=crOpen===kk?"":kk;list()}
-    else if(t.id==="tabr"||t.id==="tabh"||t.id==="tabh2"||t.id==="tabe"||t.id==="tabm"||t.id==="tabb"||t.id==="tabb2"){stTab=t.id==="tabr"?"res":t.id==="tabe"?"evo":t.id==="tabm"?"map":(t.id==="tabb"||t.id==="tabb2")?"bad":"his";list();$("hist").scrollTop=0}
+    else if(t.id==="tabr"||t.id==="tabh"||t.id==="tabh2"||t.id==="tabe"||t.id==="tabm"||t.id==="tabb"||t.id==="tabb2"||t.id==="tabn"){stTab=t.id==="tabr"?"res":t.id==="tabe"?"evo":t.id==="tabm"?"map":t.id==="tabn"?"notes":(t.id==="tabb"||t.id==="tabb2")?"bad":"his";list();$("hist").scrollTop=0}
     else if(t.id==="shi"&&cur)shareImage(cur);
     else if(t.id==="sht"&&cur)shareText(cur);
     else if(t.id==="rpb"&&cur)openReplay(cur);
