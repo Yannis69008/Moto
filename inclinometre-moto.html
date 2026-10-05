@@ -287,6 +287,9 @@ body.mapmode #wup{display:none!important}
 .btns2.open{display:grid!important;max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .btns2 .sh{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-size:22px;font-weight:700}
 .btns2 button.sm{padding:16px 8px;font-size:17px;border-radius:16px;min-height:58px;flex:none}
+#m3s{display:none;position:fixed;left:0;right:0;bottom:0;z-index:32;max-height:50vh;overflow:auto;background:var(--ovbg);border-radius:20px 20px 0 0;padding:12px 14px calc(16px + env(safe-area-inset-bottom,0px));box-sizing:border-box;box-shadow:0 -6px 28px rgba(0,0,0,.45)}#m3s.open{display:block}
+#m3s .sw{flex:none!important;width:36px;height:36px;min-width:0!important;padding:0!important;border-radius:50%!important;border:3px solid transparent!important}#m3s .sw.on{border-color:var(--fg)!important}
+#m3s .chips button{font-size:15px;padding:10px 4px;min-width:56px}#m3s input[type=range]{width:100%}#m3s .sec{margin-top:10px}#m3s .mdc button{flex:1 1 30%}
 #tbk{display:none;position:fixed;inset:0;z-index:39;background:rgba(5,8,30,.45)}#tbk.open{display:block}
 #tlb{flex:.9;font-size:18px;font-weight:700;border-radius:20px}
 #dbg{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;min-width:0}
@@ -396,8 +399,8 @@ body.cmode .dash,body.cmode .gs,body.cmode .btns3,body.cmode #wup,body.cmode #mr
   <button id="wub" class="sm">Préchauffage</button><button id="wxb" class="sm">Météo</button>
   <button id="rdb" class="sm">Radars on</button><button id="alt" class="sm">Alerte off</button>
   <button id="dem" class="sm">D&eacute;mo</button><button id="rst" class="sm">Reset max</button>
-  <button id="brkb" class="sm">Pause</button><button id="rnb" class="sm">Pluie</button><button id="dimb" class="sm">Écran épuré</button><button id="balb" class="sm">Balades</button><button id="stab" class="sm">Stations</button><button id="rawb" class="sm">Données brutes</button><button id="rawx" class="sm">Exporter brutes</button><button id="voxb" class="sm">Voix : non</button><button id="rtb" class="sm" style="display:none">Belles routes</button><button id="cfgb" class="sm">Accueil et navigation</button><button id="tutb" class="sm">Aide / tuto</button>
-</div><div id="tbk"></div>
+  <button id="brkb" class="sm">Pause</button><button id="rnb" class="sm">Pluie</button><button id="dimb" class="sm">Écran épuré</button><button id="balb" class="sm">Balades</button><button id="stab" class="sm">Stations</button><button id="rawb" class="sm">Données brutes</button><button id="rawx" class="sm">Exporter brutes</button><button id="voxb" class="sm">Voix : non</button><button id="rtb" class="sm" style="display:none">Belles routes</button><button id="m3b" class="sm">Moto 3D et effets</button><button id="cfgb" class="sm">Accueil et navigation</button><button id="tutb" class="sm">Aide / tuto</button>
+</div><div id="tbk"></div><div id="m3s"></div>
 <div id="endov" class="ov"></div><div id="tuto" class="ov"></div><div id="balov" class="ov"></div><div id="brk" style="display:none"></div><div id="dim"><div id="dima">0°</div><div id="dims">0 <small>km/h</small></div><div id="dimg"></div><p>Touche l’écran pour revenir</p></div><p id="mrem" style="display:none"></p><p id="wx" style="display:none"></p><p id="wup" style="display:none"></p>
 <div id="rad" style="display:none"></div><p id="msg">Fixe l&rsquo;iPhone dans n&rsquo;importe quel sens, puis touche D&eacute;marrer.</p>
 <div id="shareov" class="ov"></div>
@@ -422,7 +425,8 @@ function Bike3D(cv,MODEL){
   var gl=null;
   try{gl=cv.getContext("webgl",{antialias:true,alpha:true,premultipliedAlpha:true})||cv.getContext("experimental-webgl",{antialias:true,alpha:true,premultipliedAlpha:true})}catch(e){}
   if(!gl)return null;
-  var PAINTS=[[.10,.36,.95],[.95,.14,.16],[.97,.97,.98],[1,.62,.04],[.16,.16,.20],[.08,.72,.45]];
+  var PAINTS=[[.10,.36,.95],[.95,.14,.16],[.97,.97,.98],[1,.62,.04],[.16,.16,.20],[.08,.72,.45],[.60,.22,.88],[.05,.78,.88],[.62,.64,.70],[.96,.28,.62],[1,.86,.08],[.45,.30,.16],[.50,.62,.10],[.05,.12,.40]];
+  var fx={g:1,o:1,p:1,s:1,l:1,sl:1},paint2I=-1,zoom=1,pitch=0,brake=0,spd=0,gL=0,gR=0,lampT=null,lampH=null,lastVP=null,lastM=null,lastFx=0,loopOn=false,parts=[],spC=0,spT=0;
   var paintI=0,lean=0,yaw=0,night=false,ready=false,gCount=0,total=0,shift=0;
 
   /* ---------- outils maths ---------- */
@@ -572,20 +576,21 @@ function Bike3D(cv,MODEL){
   }
 
   /* ---------- WebGL ---------- */
-  var VS="attribute vec3 aP;attribute vec3 aN;attribute vec3 aC;attribute float aM;uniform mat4 uVP;uniform mat4 uM;uniform float uSh;uniform mediump float uOut;varying vec3 vN;varying vec3 vW;varying vec3 vC;varying float vM;"+
-   "void main(){bool g=aM>4.5&&aM<6.5;vec3 p=aP;if(uOut>0.5&&!g)p+=normalize(aN)*0.0065;vec4 w=g?vec4(p,1.0):uM*vec4(p,1.0);if(aM>4.5&&aM<5.5)w.x+=uSh;vW=w.xyz;vN=g?aN:mat3(uM)*aN;vC=aC;vM=aM;gl_Position=uVP*w;}";
-  var FS="precision mediump float;varying vec3 vN;varying vec3 vW;varying vec3 vC;varying float vM;uniform vec3 uEye;uniform vec3 uPaint;uniform vec3 uSky;uniform vec3 uGrd;uniform vec3 uLight;uniform vec4 uRing;uniform float uNight;uniform float uOut;uniform vec3 uInk;"+
+  var VS="attribute vec3 aP;attribute vec3 aN;attribute vec3 aC;attribute float aM;uniform mat4 uVP;uniform mat4 uM;uniform float uSh;uniform mediump float uOut;uniform float uOw;varying vec3 vN;varying vec3 vW;varying vec3 vC;varying float vM;varying vec3 vL;"+
+   "void main(){bool g=aM>4.5&&aM<6.5;vec3 p=aP;if(uOut>0.5&&!g)p+=normalize(aN)*uOw;vec4 w=g?vec4(p,1.0):uM*vec4(p,1.0);if(aM>4.5&&aM<5.5)w.x+=uSh;vW=w.xyz;vN=g?aN:mat3(uM)*aN;vC=aC;vM=aM;vL=aP;gl_Position=uVP*w;}";
+  var FS="precision mediump float;varying vec3 vN;varying vec3 vW;varying vec3 vC;varying float vM;uniform vec3 uEye;uniform vec3 uPaint;uniform vec3 uSky;uniform vec3 uGrd;uniform vec3 uLight;uniform vec4 uRing;uniform float uNight;uniform float uOut;uniform vec3 uInk;uniform vec3 uPaint2;uniform float uTwo;uniform float uGhost;uniform vec4 uGCol;uniform float uHead;uniform float uBrake;varying vec3 vL;"+
    "void main(){float m=vM;"+
    "if(m>4.5&&m<5.5){float d=length(vC.xy);float a=smoothstep(1.0,0.05,d)*(0.20+0.16*(1.0-uNight*0.4));gl_FragColor=vec4(0.0,0.0,0.0,a);return;}"+
    "if(m>5.5&&m<6.5){gl_FragColor=vec4(uRing.rgb*uRing.a,uRing.a);return;}"+
    "vec3 N=normalize(vN);vec3 V=normalize(uEye-vW);"+
+   "if(uGhost>0.5){float shg=0.80+0.20*(N.y*0.5+0.5);gl_FragColor=vec4(uGCol.rgb*shg*uGCol.a,uGCol.a);return;}"+
    "if(uOut>0.5){if(dot(N,V)>0.0)discard;gl_FragColor=vec4(uInk,1.0);return;}"+
    "vec3 L=normalize(vec3(-0.45,0.85,0.55));float nd=dot(N,L);"+
    "float band=smoothstep(0.02,0.10,nd)*0.5+smoothstep(0.50,0.58,nd)*0.5;"+
-   "vec3 base=(m>2.5&&m<3.5)?uPaint:vC;"+
+   "vec3 pc=uPaint;if(uTwo>0.5&&vL.z>0.10)pc=uPaint2;vec3 base=(m>2.5&&m<3.5)?pc:vC;"+
    "vec3 amb=mix(uGrd,uSky,N.y*0.5+0.5);"+
    "vec3 col;"+
-   "if(m>3.5&&m<4.5){col=base*1.2;}else{"+
+   "if(m>3.5&&m<4.5){float red=step(vC.g,vC.r*0.45)*step(vC.b,vC.r*0.6)*step(0.45,vC.r)*step(0.0,vL.z);float wh=step(0.75,min(vC.r,vC.g));col=base*1.2;col=mix(col,vec3(1.0,0.30,0.25)*1.6,red*uBrake*0.85);col=mix(col,vec3(1.3,1.2,0.85),wh*uHead*0.6);}else{"+
    "col=base*(amb*0.62+uLight*(0.18+0.52*band));"+
    "vec3 H=normalize(L+V);float nh=dot(N,H);"+
    "float hi=smoothstep(0.972,0.982,nh);"+
@@ -601,7 +606,7 @@ function Bike3D(cv,MODEL){
       pg=gl.createProgram();gl.attachShader(pg,sh(gl.VERTEX_SHADER,VS));gl.attachShader(pg,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(pg);
       if(!gl.getProgramParameter(pg,gl.LINK_STATUS))throw new Error("link");
       gl.useProgram(pg);
-      ["uVP","uM","uSh","uEye","uPaint","uSky","uGrd","uLight","uRing","uNight","uOut","uInk"].forEach(function(n){U[n]=gl.getUniformLocation(pg,n)});
+      ["uVP","uM","uSh","uEye","uPaint","uSky","uGrd","uLight","uRing","uNight","uOut","uInk","uOw","uPaint2","uTwo","uGhost","uGCol","uHead","uBrake"].forEach(function(n){U[n]=gl.getUniformLocation(pg,n)});
       if(!built){build();built=true;
         if(MODEL){try{loadModel(MODEL)}catch(e){useModel=false;D=[];build()}}
         DATA=new Float32Array(D);D=null}
@@ -614,7 +619,7 @@ function Bike3D(cv,MODEL){
   var DATA=null,IDX=null,ibuf=null,useModel=false,nIdx=0;
   function loadModel(b64){
     var bin=atob(b64),n=bin.length,u=new Uint8Array(n),i;for(i=0;i<n;i++)u[i]=bin.charCodeAt(i);
-    var dv=new DataView(u.buffer),nV=dv.getUint32(0,true),nF=dv.getUint32(4,true),mn=[],mx=[];
+    var tA=[0,0,0,0],hA=[0,0,0,0],dv=new DataView(u.buffer),nV=dv.getUint32(0,true),nF=dv.getUint32(4,true),mn=[],mx=[];
     for(i=0;i<3;i++){mn[i]=dv.getFloat32(8+4*i,true);mx[i]=dv.getFloat32(20+4*i,true)}
     var o=32,P=new Uint16Array(u.buffer.slice(o,o+nV*6));o+=nV*6;
     var Nn=new Int8Array(u.buffer.slice(o,o+nV*3));o+=nV*3;
@@ -625,7 +630,11 @@ function Bike3D(cv,MODEL){
     for(i=0;i<nV;i++){
       var nx=Nn[i*3]/127,ny=Nn[i*3+1]/127,nz=Nn[i*3+2]/127,l=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
       D.push(mn[0]+P[i*3]*sx,mn[1]+P[i*3+1]*sy,mn[2]+P[i*3+2]*sz,nx/l,ny/l,nz/l,Cq[i*3]/255,Cq[i*3+1]/255,Cq[i*3+2]/255,Mq[i]);
+      if(Mq[i]===4){var o4=D.length-10,r4=D[o4+6],g4=D[o4+7],b4=D[o4+8],z4=D[o4+2];
+        if(g4<=r4*.45&&b4<=r4*.6&&r4>.45&&z4>.5){tA[0]+=D[o4];tA[1]+=D[o4+1];tA[2]+=z4;tA[3]++}
+        else if(Math.min(r4,g4)>.75&&z4<-.4){hA[0]+=D[o4];hA[1]+=D[o4+1];hA[2]+=z4;hA[3]++}}
     }
+    if(tA[3]>20)lampT=[tA[0]/tA[3],tA[1]/tA[3],tA[2]/tA[3]];if(hA[3]>20)lampH=[0,hA[1]/hA[3],hA[2]/hA[3]];
     IDX=new Uint16Array(nF*3);for(i=0;i<nF*3;i++)IDX[i]=I[i]+g0;
     nIdx=nF*3;total=g0+nV;useModel=true;
   }
@@ -634,36 +643,132 @@ function Bike3D(cv,MODEL){
   cv.addEventListener("webglcontextrestored",function(){init();render()},false);
 
   var eye=[.85,2.55,3.7],tgt=[0,.60,.08];
+  function clamp(x,a,b){return x<a?a:x>b?b:x}
+  function mix3(a,b,t){return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]}
+  function proj(p){
+    if(!lastVP)return[0,0];var M=lastM,V=lastVP,x=p[0],y=p[1],z=p[2];
+    var wx=M[0]*x+M[4]*y+M[8]*z+M[12],wy=M[1]*x+M[5]*y+M[9]*z+M[13],wz=M[2]*x+M[6]*y+M[10]*z+M[14];
+    var cx=V[0]*wx+V[4]*wy+V[8]*wz+V[12],cy=V[1]*wx+V[5]*wy+V[9]*wz+V[13],cw=V[3]*wx+V[7]*wy+V[11]*wz+V[15]||1;
+    return[(cx/cw+1)/2*cv.clientWidth,(1-cy/cw)/2*cv.clientHeight];
+  }
   function render(){
     if(!ready)return;
     var dpr=Math.min(2,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
     var pw=Math.round(W*dpr),ph=Math.round(H*dpr);
     if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph}
     gl.viewport(0,0,pw,ph);
-    var asp=W/H,fov=26*Math.PI/180,th=Math.tan(fov/2)*asp,dist=(MODEL&&useModel?1.2:1.2)*Math.max(1,1.18/asp);
+    var asp=W/H,fov=26*Math.PI/180,dist=1.2*Math.max(1,1.18/asp)/zoom;
     var sx=Math.sin(lean*Math.PI/180)*.5,T=[tgt[0]+sx,tgt[1],tgt[2]];
     var e=[T[0]+(eye[0]-tgt[0])*dist,T[1]+(eye[1]-tgt[1])*dist,T[2]+(eye[2]-tgt[2])*dist];
     var VP=mul(persp(fov,asp,.1,30),look(e,T,[0,1,0]));
     var a=-lean*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
-    var M=[c,s,0,0,-s,c,0,0,0,0,1,0,0,0,0,1];
-    if(yaw){var cy=Math.cos(yaw),sy=Math.sin(yaw);M=mul(M,[cy,0,-sy,0,0,1,0,0,sy,0,cy,0,0,0,0,1])}
+    var M=[c,s,0,0,-s,c,0,0,0,0,1,0,0,0,0,1],RY=null;
+    if(yaw){var cy=Math.cos(yaw),sy=Math.sin(yaw);RY=[cy,0,-sy,0,0,1,0,0,sy,0,cy,0,0,0,0,1];M=mul(M,RY)}
+    var pr=fx.p?pitch*Math.PI/180:0;
+    if(pr){var pc=Math.cos(pr),ps=Math.sin(pr),py=.5;M=mul(M,[1,0,0,0,0,pc,ps,0,0,-ps,pc,0,0,py*(1-pc),-py*ps,1])}
+    lastVP=VP;lastM=M;
     gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-    gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthFunc(gl.LESS);
     gl.uniformMatrix4fv(U.uVP,false,new Float32Array(VP));gl.uniformMatrix4fv(U.uM,false,new Float32Array(M));
     gl.uniform3fv(U.uEye,new Float32Array(e));
     gl.uniform3fv(U.uPaint,new Float32Array(PAINTS[paintI]));
+    gl.uniform3fv(U.uPaint2,new Float32Array(PAINTS[paint2I>=0?paint2I%PAINTS.length:0]));
+    gl.uniform1f(U.uTwo,paint2I>=0?1:0);
+    gl.uniform1f(U.uHead,night&&fx.l?1:0);
+    gl.uniform1f(U.uBrake,fx.l?brake:0);
+    gl.uniform1f(U.uGhost,0);
     gl.uniform3fv(U.uSky,new Float32Array(night?[.55,.60,.95]:[1.0,1.0,1.0]));
     gl.uniform3fv(U.uGrd,new Float32Array(night?[.22,.22,.36]:[.78,.78,.86]));
     gl.uniform3fv(U.uLight,new Float32Array(night?[.80,.86,1.2]:[1.25,1.2,1.1]));
     gl.uniform4fv(U.uRing,new Float32Array(night?[1,1,1,.30]:[.08,.10,.23,.28]));
     gl.uniform1f(U.uNight,night?1:0);
     gl.uniform1f(U.uSh,Math.sin(a)*.5);
-    gl.uniform1f(U.uOut,0);
+    gl.uniform1f(U.uOut,0);gl.uniform1f(U.uOw,.0065);
     gl.depthMask(false);gl.drawArrays(gl.TRIANGLES,0,gCount);
     gl.depthMask(true);
     var dr=function(){if(useModel)gl.drawElements(gl.TRIANGLES,nIdx,gl.UNSIGNED_SHORT,0);else gl.drawArrays(gl.TRIANGLES,gCount,total-gCount)};
-    gl.uniform1f(U.uOut,1);gl.uniform3fv(U.uInk,new Float32Array(night?[.03,.04,.10]:[.07,.08,.20]));dr();
+    if(fx.g){
+      [[-gL,[.30,.76,1]],[gR,[1,.54,.30]]].forEach(function(q){
+        if(Math.abs(q[0])<6||Math.abs(q[0]-lean)<1.5)return;
+        var ga=-q[0]*Math.PI/180,gc=Math.cos(ga),gs=Math.sin(ga),GM=[gc,gs,0,0,-gs,gc,0,0,0,0,1,0,0,0,0,1];
+        if(RY)GM=mul(GM,RY);
+        gl.uniformMatrix4fv(U.uM,false,new Float32Array(GM));gl.uniform1f(U.uGhost,1);
+        gl.uniform4fv(U.uGCol,new Float32Array([q[1][0],q[1][1],q[1][2],.24]));
+        gl.clear(gl.DEPTH_BUFFER_BIT);dr();
+      });
+      gl.uniform1f(U.uGhost,0);gl.uniformMatrix4fv(U.uM,false,new Float32Array(M));gl.clear(gl.DEPTH_BUFFER_BIT);
+    }
+    var ink=night?[.03,.04,.10]:[.07,.08,.20],ow=.0065;
+    if(fx.o){var al=Math.abs(lean),t1=clamp((al-20)/12,0,1),t2=clamp((al-38)/12,0,1);
+      ink=mix3(mix3(ink,[1,.62,.08],t1),[1,.14,.12],t2);ow=.0065+.0045*t1}
+    gl.uniform1f(U.uOut,1);gl.uniform1f(U.uOw,ow);gl.uniform3fv(U.uInk,new Float32Array(ink));dr();
     gl.uniform1f(U.uOut,0);gl.depthFunc(gl.LEQUAL);dr();
+    fxDraw(performance.now());
+  }
+
+  /* ---------- effets 2D : lignes de vitesse, faisceau, etincelles, feu stop ---------- */
+  var cB=null,cF=null;
+  function mkOv(front){
+    var c=document.createElement("canvas");c.setAttribute("aria-hidden","true");
+    c.style.cssText="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;border-radius:26px";
+    var p=cv.parentNode;if(!p)return null;p.insertBefore(c,front?cv.nextSibling:cv);return c;
+  }
+  function wantLoop(){return (fx.sl&&spd>12)||parts.length>0||(fx.s&&Math.abs(lean)>45)}
+  function ensureLoop(){if(loopOn||!wantLoop())return;loopOn=true;requestAnimationFrame(tick)}
+  function tick(ts){loopOn=false;if(document.hidden||!cv.clientWidth)return;if(ts-lastFx>25)fxDraw(ts);ensureLoop()}
+  function fxDraw(ts){
+    var W=cv.clientWidth,H=cv.clientHeight,dt=Math.min(.05,Math.max(0,(ts-lastFx)/1000));if(!lastFx)dt=.016;lastFx=ts;
+    if(!cB)cB=mkOv(false);if(!cF)cF=mkOv(true);if(!cB||!cF)return;
+    var dpr=Math.min(2,window.devicePixelRatio||1);
+    if(!W||!H||!lastVP){[cB,cF].forEach(function(c){c.getContext("2d").clearRect(0,0,c.width,c.height)});return}
+    var pw=Math.round(W*dpr),ph=Math.round(H*dpr);
+    [cB,cF].forEach(function(c){if(c.width!==pw||c.height!==ph){c.width=pw;c.height=ph}});
+    var b=cB.getContext("2d"),f=cF.getContext("2d");
+    b.setTransform(dpr,0,0,dpr,0,0);f.setTransform(dpr,0,0,dpr,0,0);b.clearRect(0,0,W,H);f.clearRect(0,0,W,H);
+    var sc=H/300,i,p;
+    /* lignes de vitesse (derriere la moto) */
+    if(fx.sl&&spd>12){
+      var sp=Math.min(1,(spd-12)/110),cx=W/2,cy=H*.34,R0=Math.min(W,H)*.28,R1=Math.hypot(W,H)*.62,t=ts/1000;
+      b.lineCap="round";
+      for(i=0;i<24;i++){
+        var ang=(i*2.399963)%(Math.PI*2),ph0=(i*.61803)%1,cyc=(t*(.30+1.3*sp)+ph0)%1,r=R0+cyc*cyc*(R1-R0),len=(.03+.16*sp)*(R1-R0)*(.4+cyc);
+        var al=(.04+.30*sp)*Math.sin(cyc*Math.PI);
+        b.strokeStyle=night?"rgba(190,210,255,"+al.toFixed(3)+")":"rgba(40,70,160,"+al.toFixed(3)+")";b.lineWidth=(1+2.2*cyc)*sc;
+        var dx=Math.cos(ang),dy=Math.sin(ang);b.beginPath();b.moveTo(cx+dx*r,cy+dy*r);b.lineTo(cx+dx*(r+len),cy+dy*(r+len));b.stroke();
+      }
+    }
+    /* lumiere du phare sur la route devant (la nuit) */
+    if(fx.l&&night){
+      var c0=proj([0,0,-2.2]),rx=Math.max(20,Math.abs(proj([1.6,0,-2.2])[0]-c0[0])),ry=Math.max(10,Math.abs(proj([0,0,-3.2])[1]-c0[1]));
+      var hp=proj(lampH||[0,.98,-.6]);b.save();b.translate(hp[0],c0[1]);b.scale(1,ry/rx);
+      var gr=b.createRadialGradient(0,0,0,0,0,rx);gr.addColorStop(0,"rgba(255,240,170,.75)");gr.addColorStop(.5,"rgba(255,240,170,.30)");gr.addColorStop(1,"rgba(255,240,170,0)");
+      b.fillStyle=gr;b.beginPath();b.arc(0,0,rx,0,7);b.fill();b.restore();
+    }
+    /* halo du feu stop */
+    if(fx.l&&brake>.05&&lampT){
+      p=proj(lampT);var rr=H*.16,g=f.createRadialGradient(p[0],p[1],0,p[0],p[1],rr);
+      g.addColorStop(0,"rgba(255,50,40,"+(.75*brake).toFixed(3)+")");g.addColorStop(1,"rgba(255,50,40,0)");
+      f.globalCompositeOperation="lighter";f.fillStyle=g;f.fillRect(p[0]-rr,p[1]-rr,2*rr,2*rr);f.globalCompositeOperation="source-over";
+    }
+    /* etincelles (purement visuelles) */
+    var al2=Math.abs(lean);
+    if(fx.s&&al2>45){
+      var side=lean>0?1:-1;p=proj([side*.34,.30,.18]);
+      spC+=(30+(al2-45)*9)*dt;
+      while(spC>=1&&parts.length<90){spC-=1;
+        parts.push({x:p[0],y:p[1],vx:side*(20+Math.random()*170)*sc,vy:-(30+Math.random()*190)*sc,l:.25+Math.random()*.4,m:.65})}
+      var gl2=f.createRadialGradient(p[0],p[1],0,p[0],p[1],14*sc);gl2.addColorStop(0,"rgba(255,230,150,.9)");gl2.addColorStop(1,"rgba(255,150,40,0)");
+      f.globalCompositeOperation="lighter";f.fillStyle=gl2;f.fillRect(p[0]-14*sc,p[1]-14*sc,28*sc,28*sc);f.globalCompositeOperation="source-over";
+    }else spC=0;
+    if(parts.length){
+      f.globalCompositeOperation="lighter";f.lineCap="round";
+      for(i=parts.length-1;i>=0;i--){var q=parts[i];q.l-=dt;if(q.l<=0){parts.splice(i,1);continue}
+        q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=520*sc*dt;
+        f.strokeStyle="rgba(255,"+(170+Math.floor(Math.random()*80))+",70,"+Math.min(1,q.l/q.m*1.6).toFixed(2)+")";f.lineWidth=1.7*sc;
+        f.beginPath();f.moveTo(q.x-q.vx*.035,q.y-q.vy*.035);f.lineTo(q.x,q.y);f.stroke()}
+      f.globalCompositeOperation="source-over";
+    }
+    ensureLoop();
   }
   return{
     setLean:function(d){lean=d;render()},
@@ -672,7 +777,16 @@ function Bike3D(cv,MODEL){
     mode:function(){return useModel?"model":"simple"},
     setNight:function(n){night=!!n;render()},
     nextPaint:function(){paintI=(paintI+1)%PAINTS.length;render();return paintI},
-    setPaint:function(i){paintI=i%PAINTS.length;render()},
+    setPaint:function(i){paintI=((i%PAINTS.length)+PAINTS.length)%PAINTS.length;render()},
+    setPaint2:function(i){paint2I=i<0?-1:i%PAINTS.length;render()},
+    paints:function(){return PAINTS},
+    setFx:function(o){for(var k in o)if(k in fx)fx[k]=o[k]?1:0;render()},
+    setZoom:function(z){zoom=clamp(z,.6,1.4);render()},
+    setDyn:function(p,br,sp,l,r){
+      var ch=Math.abs(p-pitch)>.05||Math.abs(br-brake)>.02||Math.abs(sp-spd)>1||Math.abs(l-gL)>.3||Math.abs(r-gR)>.3;
+      pitch=p;brake=br;spd=sp;gL=l;gR=r;return ch;
+    },
+    hasLamps:function(){return[!!lampH,!!lampT]},
     render:render
   };
 }
@@ -768,8 +882,13 @@ function Bike3D(cv,MODEL){
   try{r3=Bike3D($("rbike3d"),M3D);if(r3){$("rwrap").classList.add("b3")}}catch(e){r3=null}
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(b3.mode()==="model"?(M3N[M3I]+" 3D"):"moto 3D simple"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v88 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v89 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
+  var FX3={g:1,o:1,p:1,s:1,l:1,sl:1},P2=-1,Z3=1;
+  try{var fj=JSON.parse(localStorage.getItem("fx3"));if(fj)for(var fk in fj)if(fk in FX3)FX3[fk]=fj[fk]?1:0}catch(e){}
+  try{var p2=localStorage.getItem("paint2");P2=p2==null?-1:+p2;if(isNaN(P2))P2=-1;Z3=+localStorage.getItem("zoom3d")||1}catch(e){}
+  function fxApply(){[b3,r3].forEach(function(b){if(b){b.setFx(FX3);b.setPaint2(P2);b.setZoom(Z3)}})}
+  fxApply();
   if(b3){
     
     try{new ResizeObserver(function(){b3.render()}).observe($("bike3d"))}catch(e){window.addEventListener("resize",function(){b3.render()})}
@@ -805,6 +924,24 @@ function Bike3D(cv,MODEL){
       else if(dx>50)setView("g");
     }
     st.addEventListener("pointerup",up);st.addEventListener("pointercancel",function(){gdrag=false});
+    /* pincer pour zoomer sur la moto */
+    var ptr={},pd0=0,z0=1,pinch=false;
+    function pcount(){var n=0;for(var k in ptr)n++;return n}
+    function pdist(){var a=[];for(var k in ptr)a.push(ptr[k]);return a.length<2?0:Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1])}
+    st.addEventListener("pointerdown",function(e){
+      if(vw!=="bike"||!b3||st.classList.contains("mapon")||e.target!==$("bike3d")&&e.target!==st)return;
+      ptr[e.pointerId]=[e.clientX,e.clientY];
+      if(pcount()===2){pinch=true;gdrag=false;pd0=pdist()||1;z0=Z3}
+    });
+    st.addEventListener("pointermove",function(e){
+      if(!ptr[e.pointerId])return;ptr[e.pointerId]=[e.clientX,e.clientY];
+      if(pinch&&pcount()>=2){gdrag=false;Z3=Math.max(.6,Math.min(1.4,z0*pdist()/pd0));if(b3)b3.setZoom(Z3);if(r3)r3.setZoom(Z3)}
+    });
+    function pend(e){
+      if(!ptr[e.pointerId])return;delete ptr[e.pointerId];
+      if(pcount()===0&&pinch){pinch=false;try{localStorage.setItem("zoom3d",String(Z3.toFixed(2)))}catch(x){}}
+    }
+    st.addEventListener("pointerup",pend);st.addEventListener("pointercancel",pend);
   })();
   function gDraw(t){
     var cv=$("gcv"),dpr=Math.min(2,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
@@ -1126,6 +1263,33 @@ function Bike3D(cv,MODEL){
       '</div><div class="sec">Application de navigation</div><p class="legend" style="margin:0 2px 4px">Utilis\u00E9e par \u00AB Ouvrir dans\u2026 \u00BB, \u00AB Y aller \u00BB et \u00AB Chercher \u00E0 proximit\u00E9 \u00BB. Waze ne g\u00E8re qu\u2019une destination : pour une route, il va au d\u00E9but.</p><div class="chips">'+
       ["plans","waze","gmaps"].map(function(k){return'<button data-nv="'+k+'"'+(navK===k?' class="on"':'')+'>'+NAVN[k]+'</button>'}).join("")+'</div>';
     var o=$("balov");o.innerHTML=hx;o.classList.add("open")}
+  /* ---------- Moto 3D et effets ---------- */
+  var FXN=[["g","Fant\u00F4mes (angle max)"],["o","Contour selon l\u2019angle"],["p","Plong\u00E9e / cabr\u00E9"],["s","\u00C9tincelles"],["l","Feux et phare"],["sl","Lignes de vitesse"]];
+  function m3Draw(){
+    var o=$("m3s"),P=b3?b3.paints():[],lp=b3?b3.hasLamps():[0,0];
+    function sw(k,i){var c=P[i];return'<button class="sw'+((k==="c"?PI3:P2)===i?' on':'')+'" data-m3="'+k+':'+i+'" style="background:rgb('+Math.round(c[0]*255)+','+Math.round(c[1]*255)+','+Math.round(c[2]*255)+')!important"></button>'}
+    var h2='<div class="hh"><button class="pill" id="m3x">Fermer</button><h2>Moto 3D</h2><span></span></div>';
+    h2+='<div class="sec">Mod\u00E8le</div><div class="chips mdc">'+M3N.map(function(n,i){return'<button data-m3="m:'+i+'"'+(i===M3I?' class="on"':'')+'>'+n+'</button>'}).join("")+'</div>';
+    h2+='<div class="sec">Couleur</div><div class="chips">'+P.map(function(c,i){return sw("c",i)}).join("")+'</div>';
+    h2+='<div class="sec">Deuxi\u00E8me couleur (arri\u00E8re)</div><div class="chips"><button data-m3="d:-1"'+(P2<0?' class="on"':'')+'>Aucune</button>'+P.map(function(c,i){return sw("d",i)}).join("")+'</div>';
+    h2+='<div class="sec">Effets</div><div class="chips mdc">'+FXN.map(function(x){return'<button data-m3="f:'+x[0]+'"'+(FX3[x[0]]?' class="on"':'')+'>'+x[1]+'</button>'}).join("")+'</div>';
+    h2+='<p class="legend" style="margin:0 2px 4px">Feux : le phare s\u2019allume la nuit, le feu stop au freinage ; la pi\u00E8ce lumineuse n\u2019existe que sur certains mod\u00E8les ('+(lp[0]?'phare ':'')+(lp[1]?'feu arri\u00E8re ':'')+(!lp[0]&&!lp[1]?'aucune sur celui-ci':'sur celui-ci')+'). \u00C9tincelles : visuelles, au-dessus de 45\u00B0.</p>';
+    h2+='<div class="sec">Zoom</div><input type="range" id="m3z" min="60" max="140" value="'+Math.round(Z3*100)+'"><div class="chips"><button data-m3="z:reset">Zoom normal</button></div>';
+    o.innerHTML=h2;
+  }
+  function m3Open(){tools(false);setView("bike");m3Draw();$("m3s").classList.add("open")}
+  $("m3b").onclick=m3Open;
+  $("m3s").addEventListener("input",function(e){if(e.target.id==="m3z"){Z3=+e.target.value/100;if(b3)b3.setZoom(Z3);if(r3)r3.setZoom(Z3);try{localStorage.setItem("zoom3d",Z3.toFixed(2))}catch(x){}}});
+  $("m3s").addEventListener("click",function(e){
+    var t=e.target;if(t.id==="m3x"){this.classList.remove("open");return}
+    var d=t.getAttribute&&t.getAttribute("data-m3");if(!d)return;var a=d.split(":"),k=a[0],val=a[1];
+    if(k==="m"){var i=+val;if(i!==M3I){try{localStorage.setItem("bike3",String(i))}catch(x){}location.reload()}return}
+    if(k==="c"){PI3=+val;if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);try{localStorage.setItem("paint",String(PI3))}catch(x){}}
+    else if(k==="d"){P2=+val;if(b3)b3.setPaint2(P2);if(r3)r3.setPaint2(P2);try{localStorage.setItem("paint2",String(P2))}catch(x){}}
+    else if(k==="f"){FX3[val]=FX3[val]?0:1;if(b3)b3.setFx(FX3);if(r3)r3.setFx(FX3);try{localStorage.setItem("fx3",JSON.stringify(FX3))}catch(x){}}
+    else if(k==="z"){Z3=1;if(b3)b3.setZoom(1);if(r3)r3.setZoom(1);try{localStorage.setItem("zoom3d","1")}catch(x){}}
+    var sc=this.scrollTop;m3Draw();this.scrollTop=sc;
+  });
   $("cfgb").onclick=function(){tools(false);cfgView()};
   /* belles routes autour de toi (sinuosit\u00E9 des routes OpenStreetMap) */
   var rts=[],rtR=25;
@@ -1277,7 +1441,10 @@ function Bike3D(cv,MODEL){
     if(vw==="g"&&t-gLastD>50){gLastD=t;gDraw(t)}
     else if(vw==="c"){lapLive();if(t-gLastD>120){gLastD=t;lapDraw()}}
     disp+=(f-disp)*(1-Math.exp(-dt/.11));
-    if(vw==="bike"&&(lastDeg===null||Math.abs(disp-lastDeg)>.02)){lastDeg=disp;if(b3)b3.setLean(disp);else $("bikeimg").style.transform="translate3d(0,0,0) rotate("+disp.toFixed(2)+"deg)"}
+    var dch=false;
+    if(vw==="bike"&&b3){var gq=Math.abs(gLonD),pd=(gLonD<0?-1:1)*Math.max(0,gq-.04)*10;pd=Math.max(-6,Math.min(6,pd));
+      dch=b3.setDyn(pd,Math.max(0,Math.min(1,(-gLonD-.08)/.22)),demo?Math.max(v*3.6,0):v*3.6,maxL,maxR)}
+    if(vw==="bike"&&(dch||lastDeg===null||Math.abs(disp-lastDeg)>.02)){lastDeg=disp;if(b3)b3.setLean(disp);else $("bikeimg").style.transform="translate3d(0,0,0) rotate("+disp.toFixed(2)+"deg)"}
     if(follow){var dh=((hT-hd+540)%360)-180;hd=(hd+dh*(1-Math.exp(-dt/.3))+360)%360;$("map").style.transform="translateY(9%) rotate("+(-hd).toFixed(1)+"deg)"}
     requestAnimationFrame(frame);
   }
@@ -1894,7 +2061,7 @@ function Bike3D(cv,MODEL){
   $("tutb").onclick=function(){tools(false);tutoShow(0)};
   (function(){var s="";try{s=localStorage.getItem("tuto")}catch(e){}if(!s)setTimeout(function(){if(!$("hist").classList.contains("open"))tutoShow(0)},600)})();
   function bkCard(l){var m=bkDue();return m?'<div class="card mi" style="border-color:#ffb703"><div class="rt"><b>\uD83D\uDCBE Pense \u00E0 sauvegarder</b></div><div class="rs"><span>'+m+' Touche Sauvegarder, puis Enregistrer dans Fichiers (iCloud Drive).</span></div></div>':""}
-  var BK_KEYS=["theme","ks2","dl","rad","radc","thr","rmode","paint","bike3","k","favs","recents","bike","bikes","wup","gate","goals","tcn","cty","circ","tank","brk","amis","pseudo","rain","autobk","acc","tuto","voice","notes","short","nav"];
+  var BK_KEYS=["theme","ks2","dl","rad","radc","thr","rmode","paint","bike3","k","favs","recents","bike","bikes","wup","gate","goals","tcn","cty","circ","tank","brk","amis","pseudo","rain","autobk","acc","tuto","voice","notes","short","nav","fx3","paint2","zoom3d"];
   function bkOk(k){return BK_KEYS.indexOf(k)>=0||/^(maint|kmt|fuel|tyres)(_b\d+)?$/.test(k)}
   function bkAllKeys(){var ks=BK_KEYS.slice();bikes().forEach(function(b){["maint","kmt","fuel","tyres"].forEach(function(n){ks.push(b.id==="b1"?n:n+"_"+b.id)})});return ks}
   function doBackup(){
@@ -2444,7 +2611,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 88 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 89 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
