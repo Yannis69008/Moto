@@ -783,7 +783,7 @@ function Bike3D(cv,MODEL){
     var pr=(fx.p||forceP)?pitch*Math.PI/180:0;
     if(pr){var pc=Math.cos(pr),ps=Math.sin(pr),wf=clamp((pitch-6)/6,0,1),py=.5*(1-wf),pz=.66*wf;
       M=mul(M,[1,0,0,0,0,pc,ps,0,0,-ps,pc,0,0,py-(py*pc-pz*ps),pz-(py*ps+pz*pc),1])}
-    lastVP=VP;lastM=M;
+    lastVP=VP;lastM=M;lastE=e;lastT=T;
     gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthFunc(gl.LESS);
     gl.uniformMatrix4fv(U.uVP,false,new Float32Array(VP));gl.uniformMatrix4fv(U.uM,false,new Float32Array(M));
@@ -843,16 +843,17 @@ function Bike3D(cv,MODEL){
     x.globalCompositeOperation="source-atop";var gs=x.createLinearGradient(0,40,0,118);gs.addColorStop(0,"rgba("+sh+",0)");gs.addColorStop(1,"rgba("+sh+",.85)");x.fillStyle=gs;x.fillRect(0,0,260,120);
     sprC[key]=c;return c}
   function skyOn(){return fx.rn&&!!wx.k}
-  function skyDraw(b,f,W,H,dt,tsec,sc){
+  function skyDraw(b,f,W,H,dt,tsec,sc,hz){
     var k=wx.k;if(!k)return;
     var a0=clamp((tsec-wx.t)/1.5,0,1);                                   /* fondu a l'apparition */
     var top=cam===2?0:1,dark=(k==="rain"||k==="storm"||k==="snow"),grey=dark||k==="over"||k==="fog";
     /* teinte du ciel en haut du cadre */
+    var yH=hz?Math.min(hz.y0,hz.yW):H;if(hz&&yH<H*.08)top=0;
     var g=b.createLinearGradient(0,0,0,H*.62),tc;
     if(night)tc=dark?"30,34,58,.55":"20,24,52,.35";else if(dark)tc="96,106,128,.34";else if(grey)tc="150,160,180,.24";else tc="100,165,255,.30";
     g.addColorStop(0,"rgba("+tc.split(",").slice(0,3).join(",")+","+(+tc.split(",")[3]*a0)+")");g.addColorStop(1,"rgba("+tc.split(",").slice(0,3).join(",")+",0)");
-    b.fillStyle=g;b.fillRect(0,0,W,H*.62);
-    var sx=W*.80,sy=H*.29,sr=Math.min(W,H)*.075;
+    if(!hz){b.fillStyle=g;b.fillRect(0,0,W,H*.62)}
+    var sx=W*.80,sy=hz?Math.min(H*.29,yH*.55):H*.29,sr=Math.min(W,H)*.075;
     /* soleil (ou lune la nuit) */
     if(top&&(k==="clear"||k==="few"||k==="partly")){
       b.save();b.globalAlpha=a0;
@@ -879,8 +880,8 @@ function Bike3D(cv,MODEL){
     if(clouds.length>nC)clouds.length=nC;
     if(top&&nC){var spr=cloudSpr(dark?2:grey?1:0);
       clouds.forEach(function(c,ci){c.x+=c.v*dt*(1+spd/60);if(c.x>1.25){c.x=-.35;c.y=.17+Math.random()*.2}
-        var cw=W*.42*c.s,ch=cw*120/260;b.globalAlpha=a0*(grey?.95:.9);b.drawImage(spr,c.x*W-cw/2,c.y*H-ch/2,cw,ch)});b.globalAlpha=1}
-    if(!top&&nC){clouds.forEach(function(c){c.x+=c.v*dt*(1+spd/60);if(c.x>1.25)c.x=-.35;var r2=W*.25*c.s,gq=b.createRadialGradient(c.x*W,(c.y+.3)*H,0,c.x*W,(c.y+.3)*H,r2);gq.addColorStop(0,"rgba(20,26,58,.07)");gq.addColorStop(1,"rgba(20,26,58,0)");b.fillStyle=gq;b.fillRect(c.x*W-r2,(c.y+.3)*H-r2,r2*2,r2*2)})}
+        var cw=W*.42*c.s,ch=cw*120/260,cyy=hz?c.y/.37*yH*.8:c.y*H;b.globalAlpha=a0*(grey?.95:.9);b.drawImage(spr,c.x*W-cw/2,cyy-ch/2,cw,ch)});b.globalAlpha=1}
+    if(!top&&nC&&!hz){clouds.forEach(function(c){c.x+=c.v*dt*(1+spd/60);if(c.x>1.25)c.x=-.35;var r2=W*.25*c.s,gq=b.createRadialGradient(c.x*W,(c.y+.3)*H,0,c.x*W,(c.y+.3)*H,r2);gq.addColorStop(0,"rgba(20,26,58,.07)");gq.addColorStop(1,"rgba(20,26,58,0)");b.fillStyle=gq;b.fillRect(c.x*W-r2,(c.y+.3)*H-r2,r2*2,r2*2)})}
     /* brouillard : voiles horizontaux */
     if(k==="fog"){for(var fq=0;fq<3;fq++){var fy=H*(.35+fq*.18),fo=((tsec*.02*(fq+1))%1)*W;var gf=f.createLinearGradient(0,fy-H*.08,0,fy+H*.08);var fc=night?"120,128,160":"235,238,246";gf.addColorStop(0,"rgba("+fc+",0)");gf.addColorStop(.5,"rgba("+fc+","+(.32*a0)+")");gf.addColorStop(1,"rgba("+fc+",0)");f.fillStyle=gf;f.fillRect(0,fy-H*.08,W,H*.16)}}
     /* neige */
@@ -892,6 +893,88 @@ function Bike3D(cv,MODEL){
       if(boltT<.35&&boltP){var al=boltT<.08?1:boltT<.16?.3:boltT<.24?.8:Math.max(0,1-(boltT-.24)/.11);
         b.fillStyle="rgba(255,255,255,"+(.35*al)+")";b.fillRect(0,0,W,H);
         b.strokeStyle="rgba(255,250,210,"+al+")";b.lineWidth=2.2*sc;b.shadowColor="rgba(190,200,255,.9)";b.shadowBlur=10*sc;b.beginPath();boltP.forEach(function(p0,j){if(j)b.lineTo(p0[0],p0[1]);else b.moveTo(p0[0],p0[1])});b.stroke();b.shadowBlur=0}}
+  }
+
+
+  /* ---------- paysage : ciel, horizon (mer, montagnes, collines, campagne), herbe et balises ---------- */
+  var scn="plain",scnHigh=false,lastE=null,lastT=null,cSky=null,cLand=null,kSky="",kLand="",roadAbs=0;
+  function projW(p){var V=lastVP,x=p[0],y=p[1],z=p[2],cx=V[0]*x+V[4]*y+V[8]*z+V[12],cy=V[1]*x+V[5]*y+V[9]*z+V[13],cw=V[3]*x+V[7]*y+V[11]*z+V[15];
+    return[(cx/cw+1)/2*cv.clientWidth,(1-cy/cw)/2*cv.clientHeight,cw]}
+  function horizon(W,H){
+    if(!lastE||!lastT)return null;var fx0=lastT[0]-lastE[0],fz0=lastT[2]-lastE[2],l=Math.sqrt(fx0*fx0+fz0*fz0);if(l<.05)return null;
+    fx0/=l;fz0/=l;var D=400,c=[lastE[0]+fx0*D,0,lastE[2]+fz0*D],a=projW([c[0]+fz0*D,0,c[2]-fx0*D]),b2=projW([c[0]-fz0*D,0,c[2]+fx0*D]);
+    if(a[2]<=0||b2[2]<=0)return null;var s=(b2[1]-a[1])/((b2[0]-a[0])||1e-6);
+    return{y0:a[1]+(0-a[0])*s,yW:a[1]+(W-a[0])*s,at:function(x){return a[1]+(x-a[0])*s}}}
+  function hx(n){var x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x)}
+  function skyCols(){var k=wx.k||"clear";
+    if(night)return k==="clear"||k==="few"?["#0b1030","#26305e"]:["#14182c","#363c58"];
+    return{clear:["#3f8fe6","#cfe7fb"],few:["#4a95e4","#d4e8f9"],partly:["#6aa3e0","#dbe8f5"],over:["#9aa4b5","#dfe3ea"],fog:["#c3c8d1","#e6e8ec"],rain:["#6d7686","#b4bac4"],snow:["#aeb8c6","#eceff3"],storm:["#4b5262","#8d93a0"]}[k]||["#3f8fe6","#cfe7fb"]}
+  function hexA(c,a){var n=parseInt(c.slice(1),16);return"rgba("+(n>>16&255)+","+(n>>8&255)+","+(n&255)+","+a+")"}
+  function mixH(c1,c2,t){var a=parseInt(c1.slice(1),16),b=parseInt(c2.slice(1),16),r=function(s){return Math.round(((a>>s)&255)*(1-t)+((b>>s)&255)*t)};return"rgb("+r(16)+","+r(8)+","+r(0)+")"}
+  function landCols(){var sc0=skyCols()[1],hz=(wx.k==="fog"?.75:wx.k==="rain"||wx.k==="storm"?.45:wx.k==="over"||wx.k==="snow"?.3:.12)+(night?.25:0);
+    var g=night?"#16261e":wx.k==="snow"?"#e4e9ee":"#78ad52";
+    return{hz:hz,sky:sc0,grass:g,far:mixH(g,sc0,.45)}}
+  function drawLand(c,W,H,hz,shift){
+    var x=c.getContext("2d"),L=landCols(),sky=L.sky,y=function(px){return hz.at(px)},i,u,st=4;
+    function band(hf,col,amp,base){x.fillStyle=col;x.beginPath();x.moveTo(-2,y(-2)+2);for(var px=-2;px<=W+2;px+=st){x.lineTo(px,y(px)-base-hf(px))}x.lineTo(W+2,y(W+2)+2);x.closePath();x.fill()}
+    var sh=shift;
+    if(scn==="mountain"){
+      var m1=function(px){u=(px+sh*.35)/W;return H*(.06+.08*Math.pow(Math.abs(Math.sin(u*3.1+1)),1.5)+.04*Math.abs(Math.sin(u*7.3+.4))+.012*Math.sin(u*17.0))};
+      band(m1,mixH(night?"#2a3150":"#7d8aa6",sky,.35+L.hz*.5),0,0);
+      if(true){
+        x.fillStyle=mixH("#ffffff",sky,L.hz*.4);for(px=-2;px<=W+2;px+=st){var cp=m1(px)-H*(scnHigh?.12:.145);if(cp>0)x.fillRect(px,y(px)-m1(px),st+.5,cp*.9)}}
+      var m2=function(px){u=(px+sh*.6)/W;return H*(.045+.03*Math.sin(u*5.2+2)+.015*Math.sin(u*13+1))};
+      band(m2,mixH(night?"#1c2a2a":"#4f6f58",sky,.25+L.hz*.5),0,0);
+    }else if(scn==="hills"){
+      band(function(px){u=(px+sh*.35)/W;return H*(.05+.025*Math.sin(u*4.1+1)+.012*Math.sin(u*9+2))},mixH(night?"#1e2c34":"#7a9c8a",sky,.35+L.hz*.5),0,0);
+      var h2=function(px){u=(px+sh*.6)/W;return H*(.03+.02*Math.sin(u*6.3+.5)+.008*Math.sin(u*15))};
+      band(h2,mixH(night?"#18261c":"#5f8f4a",sky,.2+L.hz*.5),0,0);
+      x.fillStyle=mixH(night?"#0f1a12":"#3d6b33",sky,.2+L.hz*.5);
+      for(i=0;i<26;i++){var tx=((hx(i)*1.4*W-sh*.6)%(W*1.4)+W*1.4)%(W*1.4)-W*.2,ty=y(tx)-h2(tx),tr=H*(.008+hx(i+50)*.008);x.beginPath();x.arc(tx,ty-tr*.6,tr,0,7);x.fill()}
+    }else if(scn==="sea"){
+      band(function(px){u=(px+sh*.3)/W;var v=Math.max(0,Math.sin(u*2.2-1.2));return H*.035*v*v},mixH(night?"#1e2a3a":"#8aa0b0",sky,.4+L.hz*.5),0,0);
+    }else{
+      band(function(px){u=(px+sh*.5)/W;return H*(.012+.006*Math.sin(u*11)+.004*Math.sin(u*29))},mixH(night?"#12201a":"#4d7a3e",sky,.3+L.hz*.5),0,0);
+      x.fillStyle=mixH(night?"#0d1712":"#3f6a33",sky,.3+L.hz*.5);
+      for(i=0;i<14;i++){var px2=((hx(i+9)*1.5*W-sh*.5)%(W*1.5)+W*1.5)%(W*1.5)-W*.25,ph=H*(.03+hx(i+30)*.02),pw=H*.008;x.beginPath();x.ellipse(px2,y(px2)-ph*.55,pw,ph*.55,0,0,7);x.fill()}
+    }
+  }
+  function sceneBack(b,W,H,hz,tsec){
+    var S=skyCols(),dpr=b.canvas.width/W,sh=Math.round(yaw*W*.8),kk=[W,H,Math.round(hz.y0),Math.round(hz.yW),wx.k,night?1:0,scn,scnHigh?1:0].join(",");
+    if(!cSky)cSky=document.createElement("canvas");
+    if(kSky!==kk){kSky=kk;cSky.width=b.canvas.width;cSky.height=b.canvas.height;var x=cSky.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);
+      var ym=Math.max(hz.y0,hz.yW),g=x.createLinearGradient(0,Math.min(0,ym-H),0,ym);g.addColorStop(0,S[0]);g.addColorStop(1,S[1]);x.fillStyle=g;x.fillRect(0,0,W,Math.max(0,ym+2));}
+    b.save();b.setTransform(1,0,0,1,0,0);b.drawImage(cSky,0,0);b.restore();
+    return sh}
+  function sceneLand(b,W,H,hz,sh){
+    var dpr=b.canvas.width/W,kk=[W,H,Math.round(hz.y0),Math.round(hz.yW),wx.k,night?1:0,scn,scnHigh?1:0,sh].join(",");
+    if(!cLand)cLand=document.createElement("canvas");
+    if(kLand!==kk){kLand=kk;cLand.width=b.canvas.width;cLand.height=b.canvas.height;var x=cLand.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,W,H);
+      drawLand(cLand,W,H,hz,sh);
+      var L=landCols(),ym=Math.min(hz.y0,hz.yW);
+      /* sol : herbe (ou neige) du loin vers le pres */
+      x.beginPath();x.moveTo(-2,hz.at(-2));x.lineTo(W+2,hz.at(W+2));x.lineTo(W+2,H+2);x.lineTo(-2,H+2);x.closePath();
+      var g=x.createLinearGradient(0,ym,0,H);g.addColorStop(0,L.far);g.addColorStop(.25,mixH(L.grass,L.sky,.15+L.hz*.3));g.addColorStop(1,mixH(L.grass,"#000000",night?0:.12));x.fillStyle=g;x.fill();
+      if(scn==="sea"){var sb=H*.05;x.beginPath();x.moveTo(-2,hz.at(-2));x.lineTo(W+2,hz.at(W+2));x.lineTo(W+2,hz.at(W+2)+sb);x.lineTo(-2,hz.at(-2)+sb);x.closePath();
+        var gs=x.createLinearGradient(0,ym,0,ym+sb);gs.addColorStop(0,mixH(night?"#1a2a4a":"#3d7fc0",L.sky,.25+L.hz*.4));gs.addColorStop(1,mixH(night?"#16284a":"#2a6fb5",L.sky,.1+L.hz*.3));x.fillStyle=gs;x.fill();
+        x.fillStyle=mixH(night?"#3a3a40":"#e8d9a8",L.sky,L.hz*.3);x.beginPath();x.moveTo(-2,hz.at(-2)+sb);x.lineTo(W+2,hz.at(W+2)+sb);x.lineTo(W+2,hz.at(W+2)+sb+H*.012);x.lineTo(-2,hz.at(-2)+sb+H*.012);x.closePath();x.fill()}
+    }
+    b.save();b.setTransform(1,0,0,1,0,0);b.drawImage(cLand,0,0);b.restore();
+    if(scn==="sea"&&!night){var ts=performance.now()/1000;b.fillStyle="rgba(255,255,255,.55)";for(var i=0;i<18;i++){var gx=hx(i)*W,gy=hz.at(gx)+H*.05*(.15+.8*hx(i+7)),al=.5+.5*Math.sin(ts*2+i*1.7);if(al>.6){b.globalAlpha=(al-.6)*2;b.fillRect(gx,gy,H*.02*(.5+hx(i+3)),1)}}b.globalAlpha=1}
+  }
+  function roadside(b,P,X0,RW,zN,zF,park){
+    /* touffes d'herbe et balises blanches le long de la route, qui defilent avec la vitesse */
+    var L=landCols(),gc=night?"rgba(30,60,40,.9)":wx.k==="snow"?"rgba(150,165,150,.7)":"rgba(52,98,40,.85)",z,n,s,i;
+    b.strokeStyle=gc;b.lineWidth=1.3;b.beginPath();
+    var st=.3;for(n=Math.floor((zF-roadAbs)/st);n<=Math.ceil((zN+1.5-roadAbs)/st);n++){z=n*st+roadAbs;if(z>zN+1.5||z<zF)continue;
+      for(s=-1;s<=1;s+=2){var r0=hx(n*2+(s>0?1:0)),xo=s*(RW+.12+r0*1.6),hh=.05+hx(n+s*91)*.08,p0=P(xo,z);if(p0[2]<=0)continue;var p1=P(xo,z),p2=projR([xo+X0,hh,z]);
+        var dy=p2[1]-p1[1];b.moveTo(p1[0],p1[1]);b.lineTo(p1[0]-dy*.25,p1[1]+dy);b.moveTo(p1[0],p1[1]);b.lineTo(p1[0]+dy*.3,p1[1]+dy*.9);b.moveTo(p1[0],p1[1]);b.lineTo(p1[0],p1[1]+dy*1.1)}}
+    b.stroke();
+    /* balises tous les 25 m */
+    var bs=8;for(n=Math.floor((zF-roadAbs)/bs);n<=Math.ceil((zN+1-roadAbs)/bs);n++){z=n*bs+roadAbs;if(z>zN+1||z<zF)continue;
+      for(s=-1;s<=1;s+=2){var bx=s*(RW+.55),q0=P(bx,z),q1=projR([bx+X0,.55,z]),q2=projR([bx+X0,.42,z]);if(q0[2]<=0)continue;var wv=Math.max(1,(q0[1]-q1[1])*.16);
+        b.fillStyle=night?"rgba(220,225,240,.85)":"#f4f5f7";b.fillRect(q0[0]-wv/2,q1[1],wv,q0[1]-q1[1]);b.fillStyle="#1d2230";b.fillRect(q0[0]-wv/2,q1[1],wv,(q2[1]-q1[1])*.6);
+        b.fillStyle=s<0?"#ff8a1c":"#ffd23a";b.fillRect(q0[0]-wv/2,q1[1]+(q2[1]-q1[1])*.15,wv,Math.max(1,(q2[1]-q1[1])*.3))}}
   }
 
   function wantFx(){return (fx.sl&&spd>12)||parts.length>0||(fx.s&&Math.abs(lean)>30)||(fx.fu&&spd>5)||smoke.length>0||(fx.rd&&spd>3)||(fx.rn&&rainOn)||drops.length>0||(fx.cl&&Math.abs(lean)>10)||pops.length>0||(fx.rd&&Math.abs(roadX-roadTg())>.01)}
@@ -910,28 +993,40 @@ function Bike3D(cv,MODEL){
     b.setTransform(dpr,0,0,dpr,0,0);f.setTransform(dpr,0,0,dpr,0,0);b.clearRect(0,0,W,H);f.clearRect(0,0,W,H);
   var sc=H/300,i,p;
     var tsec=ts/1000;
-    if(skyOn())skyDraw(b,f,W,H,dt,tsec,sc);
+    var hz=fx.rd?horizon(W,H):null,shY=0;
+    if(fx.rd){var hy0=hz?Math.min(hz.y0,hz.yW):-1e9;
+      if(cam===0&&hy0<H*.14)hz={y0:H*.29,yW:H*.29,at:function(){return H*.29},fake:1};   /* vue arriere : horizon "de decor" */
+      else if(!hz||hy0<-H)hz={y0:-H,yW:-H,at:function(){return -H},fake:1}}               /* vue de dessus : tout en sol */
+    if(hz)shY=sceneBack(b,W,H,hz,tsec);
+    if(skyOn())skyDraw(b,f,W,H,dt,tsec,sc,hz);
+    if(hz)sceneLand(b,W,H,hz,shY);
     /* route qui defile (bitume, lignes ou vibreurs) */
     if(fx.rd){
       /* a l'arret : moto garee au bord de la route ; en roulant : la route passe sous la moto */
       var rT=roadTg();roadX+=(rT-roadX)*(1-Math.exp(-dt/.8));if(Math.abs(rT-roadX)<.01)roadX=rT;
-      roadO=(roadO+dt*Math.max(spd,0)/3.6)%6;
+      roadO=(roadO+dt*Math.max(spd,0)/3.6)%6;roadAbs=(roadAbs+dt*Math.max(spd,0)/3.6)%72;
       var off=roadO,RW=1.05,X0=roadX,park=clamp(-roadX/1.35,0,1);
       function P(x,z){return projR([x+X0,0,z])}
       function quad(ctx,a1,a2,a3,a4){ctx.beginPath();ctx.moveTo(a1[0],a1[1]);ctx.lineTo(a2[0],a2[1]);ctx.lineTo(a3[0],a3[1]);ctx.lineTo(a4[0],a4[1]);ctx.closePath();ctx.fill()}
-      var zN=cam===3?-0.3:(cam===1?2.6:(cam===2?1.6:1.9)),zF=cam===3?-14:-7;
+      var zN=cam===3?-0.3:(cam===1?2.6:(cam===2?1.6:1.9)),zF=hz?-60:(cam===3?-14:-7);
+      if(hz){park=0;var yl=Math.max(hz.at(W/2),0)+H*.045;for(var zc=zN;zc>-60;zc-=.4){var pc0=P(0,zc);if(pc0[2]<=0||pc0[1]<yl)break}zF=Math.min(zN-.5,zc)}
       if(park>.02){var sh=function(x,z){return projR([x,0,z])},sA=sh(X0+RW,zN),sB=sh(X0+RW+1.1,zN),sC=sh(X0+RW+1.1,zF),sD=sh(X0+RW,zF);   /* bas-cote sous la moto */
         if(sA[2]>0&&sD[2]>0){var gs=b.createLinearGradient(0,sD[1],0,sA[1]);var gc=night?"60,70,60":"120,140,110";gs.addColorStop(0,"rgba("+gc+",0)");gs.addColorStop(.5,"rgba("+gc+","+(.22*park)+")");gs.addColorStop(1,"rgba("+gc+","+(.32*park)+")");b.fillStyle=gs;quad(b,sA,sB,sC,sD)}}
       var A=P(-RW,zN),B=P(RW,zN),Cq=P(RW,zF),Dq=P(-RW,zF);
       if(A[2]>0&&Dq[2]>0){
         var gr2=b.createLinearGradient(0,Dq[1],0,A[1]);gr2.addColorStop(0,night?"rgba(40,44,70,0)":"rgba(90,94,112,0)");gr2.addColorStop(.45,night?"rgba(40,44,70,.40)":"rgba(90,94,112,.22)");gr2.addColorStop(1,night?"rgba(40,44,70,.55)":"rgba(90,94,112,.32)");
+        if(hz){var L2=landCols(),ac=night?"#2a2d3c":wx.k==="rain"||wx.k==="storm"?"#4a4e5a":"#5d616c";gr2=b.createLinearGradient(0,Dq[1],0,A[1]);gr2.addColorStop(0,mixH(ac,L2.sky,.55));gr2.addColorStop(.3,mixH(ac,L2.sky,.2));gr2.addColorStop(1,ac)}
         b.fillStyle=gr2;quad(b,A,B,Cq,Dq);
+        if(hz&&hz.at(W/2)>0){var c1=P(0,zF),c2=P(0,zF+1),ddy=c1[1]-c2[1];if(ddy<-.01){var tt=(hz.at(c1[0])-c1[1])/ddy,vp=[c1[0]+(c1[0]-c2[0])*tt,c1[1]+ddy*tt];
+          b.fillStyle=mixH(night?"#2a2d3c":"#5d616c",landCols().sky,.55);b.beginPath();b.moveTo(Dq[0],Dq[1]);b.quadraticCurveTo((Dq[0]+vp[0])/2,(Dq[1]*.3+vp[1]*.7),vp[0],vp[1]+.5);b.quadraticCurveTo((Cq[0]+vp[0])/2,(Cq[1]*.3+vp[1]*.7),Cq[0],Cq[1]);b.closePath();b.fill()}}
+        if(hz){var gv=night?"rgba(150,140,120,.25)":"rgba(170,160,135,.55)";b.fillStyle=gv;quad(b,P(RW,zN),P(RW+.22,zN),P(RW+.22,zF),P(RW,zF));quad(b,P(-RW-.22,zN),P(-RW,zN),P(-RW,zF),P(-RW-.22,zF))}
         var z,k2;
         if(circOn&&park<.98){var ko=off%2.4,ka2=(.85*(1-park)).toFixed(3);for(z=zN+ko-2.4;z>zF;z-=1.2){var rr0=Math.round((z-ko)/1.2)%2===0;b.fillStyle=rr0?"rgba(230,40,40,"+ka2+")":"rgba(255,255,255,"+ka2+")";[[-RW-.22,-RW],[RW,RW+.22]].forEach(function(xx){quad(b,P(xx[0],Math.min(zN,z)),P(xx[1],Math.min(zN,z)),P(xx[1],Math.max(zF,z-1.2)),P(xx[0],Math.max(zF,z-1.2)))})}}
         if(!circOn||park>.02){if(circOn)b.globalAlpha=park;b.fillStyle=night?"rgba(255,255,255,.55)":"rgba(255,255,255,.85)";[[-RW+.04,-RW+.11],[RW-.11,RW-.04]].forEach(function(xx){quad(b,P(xx[0],zN),P(xx[1],zN),P(xx[1],zF),P(xx[0],zF))});b.globalAlpha=1}
         b.fillStyle=night?"rgba(255,255,255,.6)":"rgba(255,255,255,.9)";
         for(z=zN+off;z>zF;z-=6){var z1=Math.min(zN,z),z2=Math.max(zF,z-3);if(z1>z2)quad(b,P(-.06,z1),P(.06,z1),P(.06,z2),P(-.06,z2))}
         if(fx.rn&&rainOn){b.fillStyle=night?"rgba(160,180,255,.10)":"rgba(255,255,255,.18)";quad(b,P(-.6,1.5),P(.6,1.5),P(.6,-8),P(-.6,-8))}
+        if(hz)roadside(b,P,X0,RW,zN,zF,park);
       }
     }
     /* neon sous la moto */
@@ -1072,7 +1167,7 @@ function Bike3D(cv,MODEL){
     hasLamps:function(){return[!!lampH,!!lampT]},
     setForceP:function(v){forceP=!!v},
     setFinish:function(v){fin=v|0;render()},setCam:function(v){cam=v|0;render()},setNeon:function(v){neonI=v|0;render()},setNum:function(t){numTxt=String(t||"").slice(0,3);render()},
-    setRain:function(v){rainOn=!!v;ensureLoop()},setSky:function(c){var k=wxKind(c);if(k!==wx.k){wx={k:k,t:performance.now()/1000};clouds=[];stars=[]}rainOn=(k==="rain"||k==="storm");ensureLoop();render()},setCircuit:function(v){circOn=!!v},
+    setRain:function(v){rainOn=!!v;ensureLoop()},setScene:function(k,hi){if(k!==scn||!!hi!==scnHigh){scn=k||"plain";scnHigh=!!hi;kSky="";kLand="";render()}},setSky:function(c){var k=wxKind(c);if(k!==wx.k){wx={k:k,t:performance.now()/1000};clouds=[];stars=[]}rainOn=(k==="rain"||k==="storm");ensureLoop();render()},setCircuit:function(v){circOn=!!v},
     snap:function(){render();return[cB,cv,cF]},
     setModel:function(b64){
       try{D=[];lampT=null;lampH=null;useModel=false;IDX=null;build();loadModel(b64);DATA=new Float32Array(D);D=null;
@@ -1218,7 +1313,7 @@ function Bike3D(cv,MODEL){
   m3Load(M3I,function(ok){$("bike3d").style.opacity="";var m=$("msg");if(m)m.textContent=m.textContent.replace(/rendu : [^\]]*\]/,"rendu : "+(ok?M3N[M3I]+" 3D":"moto 3D simple")+"]")});
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(M3N[M3I]+" 3D"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v134 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v135 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1,ts:1,pr:1,cl:1,fd:1,bf:1,rd:1,rn:1,ng:0},P2=-1,Z3=1,FIN=0,CAM=0,NEON=7,NUM="46";
   try{FIN=+localStorage.getItem("fin3")||0;CAM=+localStorage.getItem("cam3")||0;var ne=localStorage.getItem("neon3");if(ne!=null)NEON=+ne;NUM=localStorage.getItem("num3")||"46"}catch(e){}
@@ -1229,6 +1324,7 @@ function Bike3D(cv,MODEL){
   function ecoApply(){[b3,r3].forEach(function(b){if(b)b.setEco(ECO)})}
   fxApply();ecoApply();
   try{var wq=JSON.parse(localStorage.getItem("wxnow")||"null");if(wq&&Date.now()-wq.t<3*3600e3&&b3)b3.setSky(wq.c)}catch(x){}
+  setTimeout(function(){try{scnApply()}catch(x){}},0);
   if(b3){
     
     try{new ResizeObserver(function(){b3.render()}).observe($("bike3d"))}catch(e){window.addEventListener("resize",function(){b3.render()})}
@@ -1747,7 +1843,7 @@ function Bike3D(cv,MODEL){
       ["plans","waze","gmaps"].map(function(k){return'<button data-nv="'+k+'"'+(navK===k?' class="on"':'')+'>'+NAVN[k]+'</button>'}).join("")+'</div>';
     var o=$("balov");o.innerHTML=hx;o.classList.add("open")}
   /* ---------- Moto 3D et effets ---------- */
-  var FXN=[["g","Fant\u00F4mes (angle max)"],["o","Contour selon l\u2019angle"],["p","Plong\u00E9e / cabr\u00E9"],["s","\u00C9tincelles"],["l","Feux et phare"],["sl","Lignes de vitesse"],["fu","Fum\u00E9e d\u2019\u00E9chappement"],["ts","Bandes de pneu"],["pr","Rapporteur au sol"],["cl","Clignotants"],["fd","Fourche au freinage"],["bf","P\u00E9tarades (sans son)"],["rd","Route qui d\u00E9file"],["rn","M\u00E9t\u00E9o (soleil, nuages, pluie)"],["ng","N\u00E9on sous la moto"]];
+  var FXN=[["g","Fant\u00F4mes (angle max)"],["o","Contour selon l\u2019angle"],["p","Plong\u00E9e / cabr\u00E9"],["s","\u00C9tincelles"],["l","Feux et phare"],["sl","Lignes de vitesse"],["fu","Fum\u00E9e d\u2019\u00E9chappement"],["ts","Bandes de pneu"],["pr","Rapporteur au sol"],["cl","Clignotants"],["fd","Fourche au freinage"],["bf","P\u00E9tarades (sans son)"],["rd","Route et paysage"],["rn","M\u00E9t\u00E9o (soleil, nuages, pluie)"],["ng","N\u00E9on sous la moto"]];
   var ORIG={"Yamaha MT-09":0,"BMW S1000 RR":2,"Suzuki GSX 750":1,"Honda CB500X":1,"Kawasaki ZX-6R":5,"Kawasaki Ninja H2":4,"Aprilia RS 660":4,"Ducati Panigale V4":1,"Honda CBR650R":1,"Yamaha YZF-R7":0,"Yamaha R1":0,"Honda CRF 450":1},CAMN=["Arri\u00E8re","C\u00F4t\u00E9","Dessus","Pilote"],FINN=["Brillante","Mate","Chrom\u00E9e"];
   function m3Set(i){
     if(M3L[i]==null)return;
@@ -1780,6 +1876,8 @@ function Bike3D(cv,MODEL){
     var h2='<div class="hh"><button class="pill" id="m3x">Fermer</button><h2>Moto 3D</h2><span></span></div>';
     h2+='<div class="sec">Mod\u00E8le</div><div class="chips mdc">'+m3Order().map(function(i){var n=M3N[i];return'<button data-m3="m:'+i+'"'+(i===M3I?' class="on"':'')+'>'+(i===M3I?'\u2713 ':'')+n+'</button>'}).join("")+'</div>';
     h2+='<div class="sec">Vue</div><div class="chips">'+CAMN.map(function(n,i){return'<button data-m3="v:'+i+'"'+(CAM===i?' class="on"':'')+'>'+(CAM===i?'\u2713 ':'')+n+'</button>'}).join("")+'</div>';
+    var SCL=[["auto","Auto (selon l\u2019endroit)"],["sea","Mer"],["mountain","Montagne"],["hills","Collines"],["plain","Campagne"]];
+    h2+='<div class="sec">Paysage</div><div class="chips">'+SCL.map(function(s){return'<button data-m3="y:'+s[0]+'"'+(SCN===s[0]?' class="on"':'')+'>'+(SCN===s[0]?'\u2713 ':'')+s[1]+'</button>'}).join("")+'</div>';
     h2+='<div class="sec">Couleur</div><div class="chips">'+P.map(function(c,i){return sw("c",i)}).join("")+'</div><div class="chips"><button data-m3="o:1">\u21BA Couleur d\u2019origine</button></div>';
     h2+='<div class="sec">Finition de la peinture</div><div class="chips">'+FINN.map(function(n,i){return'<button data-m3="p:'+i+'"'+(FIN===i?' class="on"':'')+'>'+(FIN===i?'\u2713 ':'')+n+'</button>'}).join("")+'</div>';
     h2+='<div class="sec">Deuxi\u00E8me couleur (arri\u00E8re)</div><div class="chips"><button data-m3="d:-1"'+(P2<0?' class="on"':'')+'>Aucune</button>'+P.map(function(c,i){return sw("d",i)}).join("")+'</div>';
@@ -1802,6 +1900,7 @@ function Bike3D(cv,MODEL){
     else if(k==="d"){P2=+val;if(b3)b3.setPaint2(P2);if(r3)r3.setPaint2(P2);try{localStorage.setItem("paint2",String(P2))}catch(x){}}
     else if(k==="f"){FX3[val]=FX3[val]?0:1;if(b3)b3.setFx(FX3);if(r3)r3.setFx(FX3);try{localStorage.setItem("fx3",JSON.stringify(FX3))}catch(x){}}
     else if(k==="z"){Z3=1;if(b3)b3.setZoom(1);if(r3)r3.setZoom(1);try{localStorage.setItem("zoom3d","1")}catch(x){}}
+    else if(k==="y"){SCN=val;try{localStorage.setItem("scnm",val)}catch(x){}scnApply()}
     else if(k==="v"){CAM=+val;if(b3)b3.setCam(CAM);try{localStorage.setItem("cam3",String(CAM))}catch(x){}}
     else if(k==="p"){FIN=+val;[b3,r3].forEach(function(b){if(b)b.setFinish(FIN)});try{localStorage.setItem("fin3",String(FIN))}catch(x){}}
     else if(k==="n"){var nv=+val;if(nv<0){FX3.ng=0}else{NEON=nv;FX3.ng=1;try{localStorage.setItem("neon3",String(NEON))}catch(x){}}[b3,r3].forEach(function(b){if(b){b.setNeon(NEON);b.setFx(FX3)}});try{localStorage.setItem("fx3",JSON.stringify(FX3))}catch(x){}}
@@ -2060,7 +2159,7 @@ function Bike3D(cv,MODEL){
       var s=p.coords.speed;v=(s==null||s<0)?0:s;var k=Math.round(v*3.6);gStep(s==null||s<0?null:v,p.timestamp||Date.now());
       spdT=(s==null||s<0)?null:v*3.6;spdFix();if(spdT==null)setH("spd","-- <small>km/h</small>");
       lastLat=p.coords.latitude;lastLon=p.coords.longitude;
-      tempUpdate(lastLat,lastLon);lapStep(lastLat,lastLon,p.timestamp||Date.now());
+      tempUpdate(lastLat,lastLon);sceneUpdate(lastLat,lastLon);lapStep(lastLat,lastLon,p.timestamp||Date.now());
       var al=p.coords.altitude;
       if(al!=null&&!isNaN(al)){
         altS=altS==null?al:altS+(al-altS)*.25;
@@ -2821,6 +2920,24 @@ function Bike3D(cv,MODEL){
     if(c>=71&&c<=77||c===85||c===86)return"\u2744\uFE0F";
     if(c>=95)return"\u26C8\uFE0F";
     return"";}
+
+  /* ---------- paysage selon l'endroit : mer, montagne, collines ou campagne ---------- */
+  var SCN="auto",scnAuto=null;try{SCN=localStorage.getItem("scnm")||"auto"}catch(e){}
+  try{scnAuto=JSON.parse(localStorage.getItem("scn")||"null")}catch(e){}
+  function scnApply(){var k=SCN!=="auto"?SCN:(scnAuto?scnAuto.k:"plain"),hi=SCN==="auto"?!!(scnAuto&&scnAuto.hi):SCN==="mountain";[b3,r3].forEach(function(b){if(b&&b.setScene)b.setScene(k,hi)})}
+  function sceneUpdate(lat,lon){
+    if(scnAuto&&scnAuto.lat!=null&&hav(scnAuto.lat,scnAuto.lon,lat,lon)<4000&&Date.now()-scnAuto.t<7*864e5)return;
+    if(sceneUpdate.busy&&Date.now()-sceneUpdate.busy<60000)return;sceneUpdate.busy=Date.now();
+    var la=[lat],lo=[lon],d=12/111,i;for(i=0;i<8;i++){var a=i*Math.PI/4;la.push(+(lat+d*Math.cos(a)).toFixed(4));lo.push(+(lon+d*Math.sin(a)/Math.cos(lat*Math.PI/180)).toFixed(4))}
+    var el=fetch("https://api.open-meteo.com/v1/elevation?latitude="+la.join(",")+"&longitude="+lo.join(",")).then(function(x){return x.json()}).then(function(j){return j.elevation||null}).catch(function(){return null});
+    var q='[out:json][timeout:20];way["natural"="coastline"](around:7000,'+lat.toFixed(4)+','+lon.toFixed(4)+');out ids 1;';
+    var co=fetch("https://overpass-api.de/api/interpreter?data="+encodeURIComponent(q)).then(function(x){return x.json()}).then(function(j){return(j.elements||[]).length>0}).catch(function(){return null});
+    Promise.all([el,co]).then(function(r){var e=r[0],sea=r[1];if(!e&&sea==null){sceneUpdate.busy=0;return}
+      var c=e?e[0]:0,mx=e?Math.max.apply(null,e):0,k;
+      if(sea&&c<200)k="sea";else if(c>900||mx-c>700||mx>1500)k="mountain";else if(mx-c>180||c>450)k="hills";else k="plain";
+      scnAuto={k:k,hi:mx>1800||c>1300,lat:lat,lon:lon,t:Date.now()};try{localStorage.setItem("scn",JSON.stringify(scnAuto))}catch(x){}
+      scnApply()});
+  }
   function tempUpdate(lat,lon){
     if(Date.now()-tmpLast<10*60000)return;tmpLast=Date.now();
     var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){ac&&ac.abort()},10000);
@@ -2830,7 +2947,7 @@ function Bike3D(cv,MODEL){
       else tmpLast=Date.now()-9*60000;
     }).catch(function(){tmpLast=Date.now()-9*60000});
   }
-  try{if(navigator.permissions&&navigator.geolocation)navigator.permissions.query({name:"geolocation"}).then(function(s){if(s.state==="granted")navigator.geolocation.getCurrentPosition(function(p){tempUpdate(p.coords.latitude,p.coords.longitude)},function(){},{timeout:8000})}).catch(function(){})}catch(e){}
+  try{if(navigator.permissions&&navigator.geolocation)navigator.permissions.query({name:"geolocation"}).then(function(s){if(s.state==="granted")navigator.geolocation.getCurrentPosition(function(p){tempUpdate(p.coords.latitude,p.coords.longitude);sceneUpdate(p.coords.latitude,p.coords.longitude)},function(){},{timeout:8000})}).catch(function(){})}catch(e){}
   function cityOf(lat,lon,cb){
     var key=lat.toFixed(2)+","+lon.toFixed(2),m=getJ("cty",{});
     if(m[key]){cb(m[key]);return}
