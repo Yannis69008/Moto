@@ -434,6 +434,11 @@ body.cmode .stage{background:#000!important;box-shadow:none!important;border:0!i
 #ctuto{background:#000!important;color:#f4f4f8}#ctuto .card{background:#111318!important;border-color:#23262f!important;box-shadow:none!important;color:#f4f4f8}#ctuto .st span{color:#d6d8de!important}#ctuto .sub,#ctuto .legend,#ctuto .nv{color:#8c91a0!important}
 #batrow{display:flex;align-items:center;gap:6px;justify-content:center;margin:2px 2px -4px;font-size:13px;line-height:1;color:var(--mut)}#batrow input{width:56px;height:26px;border-radius:10px;border:1px solid var(--line,rgba(127,127,127,.3));background:transparent;color:var(--fg);font-size:16px;text-align:center;padding:0 4px}#batrow small{font-size:12px;opacity:.75}
 .batin{width:64px;height:32px;border-radius:10px;border:1px solid rgba(127,127,127,.35);background:transparent;color:var(--fg);font-size:16px;text-align:center}
+/* plus de debordement sur le cote (la page ne doit jamais glisser a gauche/droite) */
+html,body{overflow-x:hidden;max-width:100%}
+#m3s{overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;touch-action:pan-y}#m3s *{max-width:100%;box-sizing:border-box}
+#m3s .chips button{min-width:0!important;white-space:normal;overflow-wrap:anywhere;line-height:1.15}
+#m3s .legend,#m3s p{overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -763,7 +768,7 @@ function Bike3D(cv,MODEL){
   }
   function render(){
     if(!ready)return;
-    var dpr=eco?1:Math.min(1.5,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
+    var dpr=eco?1:Math.min(spd>3?1.5:2,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
     var pw=Math.round(W*dpr),ph=Math.round(H*dpr);
     if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph}
     gl.viewport(0,0,pw,ph);
@@ -958,7 +963,7 @@ function Bike3D(cv,MODEL){
     }
   }
   function sceneBack(b,W,H,hz,tsec){
-    var S=skyCols(),dpr=b.canvas.width/W,sh=Math.round(yaw*W*.8),kk=[W,H,Math.round(hz.y0),Math.round(hz.yW),wx.k,night?1:0,scn,scnHigh?1:0].join(",");
+    var S=skyCols(),dpr=b.canvas.width/W,sh=Math.round(yaw*W*.8/3)*3,kk=[W,H,Math.round(hz.y0),Math.round(hz.yW),wx.k,night?1:0,scn,scnHigh?1:0].join(",");
     if(!cSky)cSky=document.createElement("canvas");
     if(kSky!==kk){kSky=kk;cSky.width=b.canvas.width;cSky.height=b.canvas.height;var x=cSky.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);
       var ym=Math.max(hz.y0,hz.yW),g=x.createLinearGradient(0,Math.min(0,ym-H),0,ym);g.addColorStop(0,S[0]);g.addColorStop(1,S[1]);x.fillStyle=g;x.fillRect(0,0,W,Math.max(0,ym+2));}
@@ -1032,7 +1037,7 @@ function Bike3D(cv,MODEL){
   function fxDraw(ts){
     var W=cv.clientWidth,H=cv.clientHeight,dt=Math.min(.05,Math.max(0,(ts-lastFx)/1000));if(!lastFx)dt=.016;lastFx=ts;
     if(!cB)cB=mkOv(false);if(!cF)cF=mkOv(true);if(!cB||!cF)return;
-    var dpr=eco?1:Math.min(1.25,window.devicePixelRatio||1);
+    var dpr=eco?1:Math.min(spd>3?1.25:2,window.devicePixelRatio||1);
     if(!W||!H||!lastVP){[cB,cF].forEach(function(c){c.getContext("2d").clearRect(0,0,c.width,c.height)});return}
     var pw=Math.round(W*dpr),ph=Math.round(H*dpr);
     [cB,cF].forEach(function(c){if(c.width!==pw||c.height!==ph){c.width=pw;c.height=ph}});
@@ -1414,7 +1419,7 @@ function Bike3D(cv,MODEL){
   m3Load(M3I,function(ok){$("bike3d").style.opacity="";var m=$("msg");if(m)m.textContent=m.textContent.replace(/rendu : [^\]]*\]/,"rendu : "+(ok?M3N[M3I]+" 3D":"moto 3D simple")+"]")});
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(M3N[M3I]+" 3D"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v144 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v147 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1,ts:1,pr:1,cl:1,fd:1,bf:1,rd:1,rn:1,ng:0},P2=-1,Z3=1,FIN=0,CAM=0,NEON=7,NUM="46";
   try{FIN=+localStorage.getItem("fin3")||0;CAM=+localStorage.getItem("cam3")||0;var ne=localStorage.getItem("neon3");if(ne!=null)NEON=+ne;NUM=localStorage.getItem("num3")||"46"}catch(e){}
@@ -1473,7 +1478,7 @@ function Bike3D(cv,MODEL){
     $("ctno").onclick=function(){try{localStorage.setItem("ctuto","0")}catch(e){}o.classList.remove("open")};
   }
   function setView(w){
-    var vw0=vw;vw=w;var stg=document.querySelector(".stage");stg.classList.toggle("gview",w==="g");stg.classList.toggle("cview",w==="c");document.body.classList.toggle("cmode",w==="c");if(w==="c"&&vw0!=="c"){var ctOff=false;try{ctOff=localStorage.getItem("ctuto")==="0"}catch(e){}if(!ctOff)ctutoShow()}document.body.classList.toggle("gmode",w==="g");
+    var vw0=vw;vw=w;if(w!=="bike"){var m3=$("m3s");if(m3)m3.classList.remove("open")}var stg=document.querySelector(".stage");stg.classList.toggle("gview",w==="g");stg.classList.toggle("cview",w==="c");document.body.classList.toggle("cmode",w==="c");if(w==="c"&&vw0!=="c"){var ctOff=false;try{ctOff=localStorage.getItem("ctuto")==="0"}catch(e){}if(!ctOff)ctutoShow()}document.body.classList.toggle("gmode",w==="g");
     $("vtb").classList.toggle("on",w==="bike");$("vtg").classList.toggle("on",w==="g");$("vtc").classList.toggle("on",w==="c");
     if(w==="bike"&&b3)setTimeout(function(){b3.render()},30);
   }
@@ -3998,7 +4003,7 @@ function Bike3D(cv,MODEL){
   function shareText(r){
     var t=summary(r);
     if(navigator.share)navigator.share({text:t}).catch(function(){});
-    else if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){$("shn").textContent="Texte copié."});
+    else if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){$("shn").textContent="Texte copié."}).catch(function(){prompt("Copie le texte :",t)});
     else prompt("Copie le texte :",t);
   }
   function compare(a,b){
