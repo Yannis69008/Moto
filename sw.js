@@ -1,8 +1,10 @@
 /* Inclinomètre moto : fonctionnement hors connexion.
-   - l'appli (page HTML) : réseau d'abord (pour recevoir les mises à jour), sinon la dernière copie enregistrée ;
+   - l'appli (page HTML) : s'ouvre tout de suite depuis la copie enregistrée, la nouvelle version se télécharge en arrière-plan
+     et l'appli propose de l'installer ;
+   - motos 3D (moto-XX.bin) : téléchargées une seule fois, puis gardées ;
    - bibliothèque de carte et polices : copie locale d'abord ;
    - fonds de carte déjà vus : gardés (jusqu'à environ 1500 tuiles) pour s'afficher sans réseau. */
-var APP = "moto-app-v1", LIB = "moto-lib-v1", TIL = "moto-tiles-v1", MAXT = 1500;
+var APP = "moto-app-v2", LIB = "moto-lib-v1", TIL = "moto-tiles-v1", MOD = "moto-models-v1", MAXT = 1500;
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(APP).then(function (c) {
@@ -29,16 +31,33 @@ self.addEventListener("fetch", function (e) {
   if (r.method !== "GET") return;
   var u = new URL(r.url);
 
-  /* la page de l'appli */
+  /* la page de l'appli : copie enregistree tout de suite, mise a jour en arriere-plan */
   if (r.mode === "navigate" || (u.origin === location.origin && /\.html$/.test(u.pathname))) {
-    e.respondWith(
-      fetch(r).then(function (res) {
-        if (res && res.ok) { var cp = res.clone(); caches.open(APP).then(function (c) { c.put("inclinometre-moto.html", cp); }); }
-        return res;
-      }).catch(function () {
-        return caches.open(APP).then(function (c) { return c.match("inclinometre-moto.html"); });
-      })
-    );
+    e.respondWith(caches.open(APP).then(function (c) {
+      return c.match("inclinometre-moto.html").then(function (old) {
+        var net = fetch(u.origin + u.pathname, { cache: "no-store" }).then(function (res) {
+          if (res && res.ok) {
+            var et = res.headers.get("etag") || res.headers.get("last-modified") || "", oe = old ? (old.headers.get("etag") || old.headers.get("last-modified") || "") : "";
+            c.put("inclinometre-moto.html", res.clone());
+            if (old && et && et !== oe) self.clients.matchAll().then(function (cl) { cl.forEach(function (x) { x.postMessage({ t: "upd" }); }); });
+          }
+          return res;
+        });
+        if (old) { e.waitUntil(net.catch(function () {})); return old; }
+        return net;
+      });
+    }));
+    return;
+  }
+
+  /* motos 3D : une fois telechargees, gardees */
+  if (u.origin === location.origin && /\.bin$/.test(u.pathname)) {
+    e.respondWith(caches.open(MOD).then(function (c) {
+      return c.match(u.pathname).then(function (hit) {
+        if (hit) return hit;
+        return fetch(u.pathname).then(function (res) { if (res && res.ok) c.put(u.pathname, res.clone()); return res; });
+      });
+    }));
     return;
   }
 
