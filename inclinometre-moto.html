@@ -438,8 +438,8 @@ body.gmode .gs{display:none!important}
   <div class="tsec">🔔 Alertes en roulant</div>
   <button id="rdb" class="sm" data-i="📷">Radars : oui</button><button id="alt" class="sm" data-i="📐">Alerte angle : non</button><button id="rnb" class="sm" data-i="🌧">Pluie</button><button id="voxb" class="sm" data-i="🔊">Voix : non</button>
   <div class="tsec">🔋 Écran et batterie</div>
-  <button id="ecob" class="sm" data-i="🔋">Économie batterie : non</button><button id="dimb" class="sm" data-i="🌑">Écran épuré</button>
-  <p class="tleg">Ce qui économise le plus : Écran épuré (fond noir), luminosité de l’iPhone baissée et Économie batterie. Le GPS se coupe tout seul quand tu ne roules pas et que la carte est fermée.</p>
+  <button id="ecob" class="sm" data-i="🔋">Économie batterie : non</button><button id="dimb" class="sm" data-i="🌑">Écran épuré</button><button id="adimb" class="sm" data-i="⏱">Écran noir auto : non</button>
+  <p class="tleg">Ce qui économise le plus : la luminosité de l’iPhone baissée, l’écran noir (Écran épuré, ou Écran noir auto qui s’active seul en roulant) et Économie batterie. Le GPS se coupe tout seul quand tu ne roules pas et que la carte est fermée.</p>
   <div class="tsec">📊 Données</div>
   <button id="rawb" class="sm" data-i="🧪">Données brutes</button><button id="rawx" class="sm" data-i="📤">Exporter brutes</button>
   <div class="tsec">❓ Aide et réglages</div>
@@ -716,7 +716,7 @@ function Bike3D(cv,MODEL){
   }
   function render(){
     if(!ready)return;
-    var dpr=eco?1:Math.min(1.75,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
+    var dpr=eco?1:Math.min(1.5,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
     var pw=Math.round(W*dpr),ph=Math.round(H*dpr);
     if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph}
     gl.viewport(0,0,pw,ph);
@@ -781,11 +781,11 @@ function Bike3D(cv,MODEL){
   }
   function wantLoop(){return (fx.sl&&spd>12)||parts.length>0||(fx.s&&Math.abs(lean)>30)||(fx.fu&&spd>5)||smoke.length>0||(fx.rd&&spd>3)||(fx.rn&&rainOn)||drops.length>0||(fx.cl&&Math.abs(lean)>10)||pops.length>0}
   function ensureLoop(){if(loopOn||!wantLoop())return;loopOn=true;requestAnimationFrame(tick)}
-  function tick(ts){loopOn=false;if(document.hidden||!cv.clientWidth)return;if(ts-lastFx>32)fxDraw(ts);ensureLoop()}
+  function tick(ts){loopOn=false;if(document.hidden||!cv.clientWidth)return;if(ts-lastFx>(eco?66:40))fxDraw(ts);ensureLoop()}
   function fxDraw(ts){
     var W=cv.clientWidth,H=cv.clientHeight,dt=Math.min(.05,Math.max(0,(ts-lastFx)/1000));if(!lastFx)dt=.016;lastFx=ts;
     if(!cB)cB=mkOv(false);if(!cF)cF=mkOv(true);if(!cB||!cF)return;
-    var dpr=eco?1:Math.min(1.5,window.devicePixelRatio||1);
+    var dpr=eco?1:Math.min(1.25,window.devicePixelRatio||1);
     if(!W||!H||!lastVP){[cB,cF].forEach(function(c){c.getContext("2d").clearRect(0,0,c.width,c.height)});return}
     var pw=Math.round(W*dpr),ph=Math.round(H*dpr);
     [cB,cF].forEach(function(c){if(c.width!==pw||c.height!==ph){c.width=pw;c.height=ph}});
@@ -794,7 +794,7 @@ function Bike3D(cv,MODEL){
   var sc=H/300,i,p;
     var tsec=ts/1000;
     /* route qui defile (bitume, lignes ou vibreurs) */
-    if(fx.rd&&(spd>3||circOn)&&cam!==2){
+    if(fx.rd&&spd>3&&cam!==2){
       var off=(tsec*Math.max(spd,0)/3.6)%6,RW=1.05;
       function P(x,z){return projR([x,0,z])}
       function quad(ctx,a1,a2,a3,a4){ctx.beginPath();ctx.moveTo(a1[0],a1[1]);ctx.lineTo(a2[0],a2[1]);ctx.lineTo(a3[0],a3[1]);ctx.lineTo(a4[0],a4[1]);ctx.closePath();ctx.fill()}
@@ -963,8 +963,11 @@ function Bike3D(cv,MODEL){
 </script>
 <script>
 (function(){
-  var wOff=0,DL=3,cal=null,GR=1.4,spdT=null,spdD=null,spdLast=null,spdV=null,spdHist=[],spdBias=0;
-  function spdFix(){if(spdD==null||!spdHist.length||!fwdOK||demo)return;var ref=spdHist[0][1],e=spdT-ref;if(Math.abs(e)>25)return;spdD+=.4*e;spdHist.forEach(function(q){q[1]+=.4*e});spdBias=Math.max(-.15,Math.min(.15,spdBias-.25*e/35.3))}
+  var wOff=0,DL=3,cal=null,GR=1.4,spdT=null,spdD=null,spdLast=null;
+  var spdFT=0,spdPrev=null,spdA=0;
+  function spdFix(){var now=performance.now();if(spdT==null){spdPrev=null;spdA=0;return}
+    if(spdPrev!=null){var dtf=(now-spdFT)/1000;if(dtf>.3&&dtf<3){var a=(spdT-spdPrev)/dtf;a=Math.max(-12,Math.min(8,a));spdA+=(a-spdA)*.55}}else spdA=0;
+    if(spdT<2)spdA=0;spdPrev=spdT;spdFT=now}
   try{wOff=+localStorage.getItem('woff')||0;DL=+localStorage.getItem('dl')||3}catch(e){}
   var KS=.6,KSL=[1,.8,.6,1.2];
   try{KS=+localStorage.getItem('ks2')||.6}catch(e){}
@@ -1002,13 +1005,34 @@ function Bike3D(cv,MODEL){
     if(!cs.on){if(a>15)cs={on:true,peak:a,side:side,lat:lastLat,lon:lastLon}}
     else if(a>cs.peak){cs.peak=a;cs.lat=lastLat;cs.lon=lastLon}
   }
-  var wq1=0,wq2=0,wqOn=false,zcr=[],zst=0,zk=1,zT=0;
+  var drT=0,wq1=0,wq2=0,wqOn=false,zcr=[],zst=0,zk=1,zT=0;
+  /* fusion avec l'attitude iOS : en relevant la moto (contre-braquage, guidon qui tourne) la vitesse de lacet donne un faux angle oppose ;
+     l'attitude du telephone, elle, suit bien les mouvements rapides. Angle = lent(lacet) + rapide(attitude), axe et sens appris tout seuls. */
+  var fy=0,afB=null,afL=[0,0,0],afN=0,afC=0,afVa=1e-3,afVb=1e-3,afLY=0,afLA=0,afOK=false,afPre=false,afSv=0;
+  /* reprise de l'axe appris a la sortie precedente : la fusion est active des le premier virage ; si le telephone a change de place, l'appli le voit vite et reapprend */
+  try{var afS=JSON.parse(localStorage.getItem("afax")||"null");if(afS&&afS.L&&afS.B){afL=afS.L;afB=afS.B;afN=4;afC=.5;afVa=1;afVb=1;afPre=true}}catch(e){}
+  function afStep(dt){
+    var n=Math.sqrt(ux*ux+uy*uy+uz*uz)||1,u0=ux/n,u1=uy/n,u2=uz/n;
+    if(!afB)afB=[u0,u1,u2];
+    if(Math.abs(fy)<4){var kb=1-Math.exp(-dt/15);afB[0]+=(u0-afB[0])*kb;afB[1]+=(u1-afB[1])*kb;afB[2]+=(u2-afB[2])*kb;var nb=Math.sqrt(afB[0]*afB[0]+afB[1]*afB[1]+afB[2]*afB[2])||1;afB[0]/=nb;afB[1]/=nb;afB[2]/=nb}
+    var ub=u0*afB[0]+u1*afB[1]+u2*afB[2],d0=u0-ub*afB[0],d1=u1-ub*afB[1],d2=u2-ub*afB[2];
+    if(afPre&&afN>7&&afC/Math.sqrt(afVa*afVb)<.1){afL=[0,0,0];afN=0;afPre=false}
+    if(Math.abs(fy)>8){var wv=(fy>0?1:-1)*Math.min(1,Math.abs(fy)/30)*dt;afL[0]+=d0*wv;afL[1]+=d1*wv;afL[2]+=d2*wv;afN+=dt}
+    var kd=Math.exp(-dt/600);afL[0]*=kd;afL[1]*=kd;afL[2]*=kd;
+    var ln=Math.sqrt(afL[0]*afL[0]+afL[1]*afL[1]+afL[2]*afL[2]),att=ln>1e-6?Math.atan2((u0*afL[0]+u1*afL[1]+u2*afL[2])/ln,ub)*180/Math.PI:0;
+    var kc=1-Math.exp(-dt/10);afC+=(att*fy-afC)*kc;afVa+=(att*att-afVa)*kc;afVb+=(fy*fy-afVb)*kc;
+    var cr=afC/Math.sqrt(afVa*afVb);afOK=afN>2.5&&cr>(afOK?.3:.35);
+    afSv+=dt;if(afOK&&afSv>30){afSv=0;try{localStorage.setItem("afax",JSON.stringify({L:afL.map(function(x){return+x.toFixed(4)}),B:afB.map(function(x){return+x.toFixed(4)})}))}catch(e){}}
+    var ka=1-Math.exp(-dt/.6);if(afLA==null)afLA=att;afLY+=(fy-afLY)*ka;afLA+=(att-afLA)*ka;
+    return afOK?afLY+(att-afLA):fy;
+  }
   function mot(e){
     if(test||demo)return;
     var r=e.rotationRate;if(!r||r.alpha==null||!haveUp)return;
     var w=(r.beta*ux+r.gamma*uy+r.alpha*uz)*Math.PI/180;
     var ac0=e.acceleration;if(ac0&&ac0.x!=null&&ac0.y!=null&&ac0.z!=null)accStep(ac0);
     if(cal)calStep(w);
+    else if(on&&!acDone&&v*3.6>=45&&Math.abs(fsl)<3&&Date.now()-acT>3000)cal={t0:Date.now(),w:[],v:0,auto:true};
     w-=wOff;var wRaw=w;
     frozen=v*3.6<MIN;
     if(!frozen){
@@ -1033,16 +1057,16 @@ function Bike3D(cv,MODEL){
       phi*=zk;
       lgs+=(Math.max(-2.5,Math.min(2.5,SG*(-v*w/9.81)))*zk*(-v*w>0?GR:1)-lgs)*0.07;
       phi=dz(phi);
-      f+=(phi-f)*0.07;
+      fy+=(phi-fy)*0.07;f=afStep(dq);
       var tn=performance.now();fsl+=(f-fsl)*(1-Math.exp(-Math.min(.1,(tn-fsT)/1000)/(zon?.6:.35)));fsT=tn;
       var iv=e.interval||16.7;if(iv<1)iv*=1000;hfT+=Math.min(.05,iv/1000);
       if(hfT>=.25){hfT-=.25;var ja=(f-2*hfL+hfM)/.0625;hfM=hfL;hfL=f;if(ride){hsA+=ja*ja*.25;htA+=.25}}
       if(fsl>maxR)maxR=fsl;if(-fsl>maxL)maxL=-fsl;
       if(ride){if(fsl>ride.mR)ride.mR=fsl;if(-fsl>ride.mL)ride.mL=-fsl;track()}
-    }else{wqOn=false;zcr=[];zst=0;zk=1;lgs+=(0-lgs)*0.1;f+=(0-f)*0.1;fsl+=(0-fsl)*0.1;lgv+=(0-lgv)*0.1;hfL=hfM=f}
+    }else{wqOn=false;zcr=[];zst=0;zk=1;lgs+=(0-lgs)*0.1;f+=(0-f)*0.1;fy=f;afLY=f;afLA=null;fsl+=(0-fsl)*0.1;lgv+=(0-lgv)*0.1;hfL=hfM=f}
     if(rawOn&&ride){var tr=performance.now();if(tr-rawT>=50){rawT=tr;raw.push([Date.now(),+v.toFixed(2),+wRaw.toFixed(4),+(r.alpha||0).toFixed(2),+(r.beta||0).toFixed(2),+(r.gamma||0).toFixed(2),+ux.toFixed(3),+uy.toFixed(3),+uz.toFixed(3),+f.toFixed(2),+fsl.toFixed(2)])}}
     checkAlert();
-    draw();
+    var dn=performance.now();if(dn-drT>=50||demo||test){drT=dn;draw()}
   }
 
   /* ---------- moto 3D ---------- */
@@ -1068,7 +1092,7 @@ function Bike3D(cv,MODEL){
   m3Load(M3I,function(ok){$("bike3d").style.opacity="";var m=$("msg");if(m)m.textContent=m.textContent.replace(/rendu : [^\]]*\]/,"rendu : "+(ok?M3N[M3I]+" 3D":"moto 3D simple")+"]")});
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(M3N[M3I]+" 3D"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v118 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v121 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1,ts:1,pr:1,cl:1,fd:1,bf:1,rd:1,rn:1,ng:0},P2=-1,Z3=1,FIN=0,CAM=0,NEON=7,NUM="46";
   try{FIN=+localStorage.getItem("fin3")||0;CAM=+localStorage.getItem("cam3")||0;var ne=localStorage.getItem("neon3");if(ne!=null)NEON=+ne;NUM=localStorage.getItem("num3")||"46"}catch(e){}
@@ -1354,6 +1378,11 @@ function Bike3D(cv,MODEL){
   function say(t){if(!voiceOn||!window.speechSynthesis||!window.SpeechSynthesisUtterance)return;
     try{var u=new SpeechSynthesisUtterance(String(t).replace(/\(touche pour fermer\)/g,"").replace(/[^A-Za-z\u00C0-\u017F0-9\s.,:'\u2019%+\-]/g," "));u.lang="fr-FR";u.rate=1.05;speechSynthesis.speak(u)}catch(e){}}
   function saySec(ms){var s=Math.round(ms/10)/100,m=Math.floor(s/60),x=(s-m*60).toFixed(1).replace(".",",");return(m?m+" minute"+(m>1?"s":"")+" ":"")+x+" secondes"}
+  var ADIM=false,lastAny=performance.now();try{ADIM=localStorage.getItem("adim")==="1"}catch(e){}
+  function adimLbl(){$("adimb").textContent="\u00C9cran noir auto : "+(ADIM?"oui":"non")}adimLbl();
+  $("adimb").onclick=function(){ADIM=!ADIM;try{localStorage.setItem("adim",ADIM?"1":"0")}catch(e){}adimLbl();$("msg").textContent=ADIM?"\u00C9cran noir auto activ\u00E9 : pendant une sortie, apr\u00E8s 20 s sans toucher l\u2019\u00E9cran (hors carte), l\u2019\u00E9cran \u00E9pur\u00E9 noir s\u2019affiche. Touche pour revenir.":"\u00C9cran noir auto d\u00E9sactiv\u00E9."};
+  document.addEventListener("pointerdown",function(){lastAny=performance.now()},true);
+  setInterval(function(){if(ADIM&&on&&!mapOn&&!demo&&v*3.6>10&&performance.now()-lastAny>20000&&!$("dim").classList.contains("open")&&!document.querySelector(".ov.open")){$("dim").classList.add("open");dimDraw()}},2000);
   function ecoLbl(){$("ecob").textContent="Économie batterie : "+(ECO?"oui":"non")}
   $("ecob").onclick=function(){ECO=!ECO;try{localStorage.setItem("eco",ECO?"1":"0")}catch(e){}ecoLbl();ecoApply();$("msg").textContent=ECO?"Économie de batterie activée : 3D allégée (22 images/s, sans fantômes, fumée, étincelles ni lignes de vitesse).":"Économie de batterie désactivée."};
   ecoLbl();
@@ -1458,7 +1487,7 @@ function Bike3D(cv,MODEL){
   }
   $("balb").onclick=function(){tools(false);balTab="routes";if(!rts.length)routesLoad(rtR);else balView("")};
   /* raccourcis d'accueil et choix de navigation */
-  var SCUT=[["balb","Balades et routes"],["stab","Stations"],["wxb","M\u00E9t\u00E9o"],["dimb","\u00C9cran \u00E9pur\u00E9"],["clb","Calibrer"],["ksb","Force"],["rdb","Radars"],["ecob","\u00C9conomie batterie"],["wub","Pr\u00E9chauffage"],["brkb","Pause"],["dem","D\u00E9mo"]],
+  var SCUT=[["balb","Balades et routes"],["adimb","\u00C9cran noir auto"],["stab","Stations"],["wxb","M\u00E9t\u00E9o"],["dimb","\u00C9cran \u00E9pur\u00E9"],["clb","Calibrer"],["ksb","Force"],["rdb","Radars"],["ecob","\u00C9conomie batterie"],["wub","Pr\u00E9chauffage"],["brkb","Pause"],["dem","D\u00E9mo"]],
       shortSel=getJ("short",["balb","stab"]).filter(function(x){return x!=="rtb"}),navK="plans";try{navK=localStorage.getItem("nav")||"plans"}catch(e){}
   var NAVN={plans:"Plans",waze:"Waze",gmaps:"Google Maps"};
   function shortDraw(){var hq=$("hq");hq.innerHTML=SCUT.filter(function(s){return shortSel.indexOf(s[0])>=0}).map(function(s){return'<button data-sh="'+s[0]+'">'+s[1]+'</button>'}).join("")}
@@ -1720,7 +1749,7 @@ function Bike3D(cv,MODEL){
   var disp=0,lastDeg=null,lastT=0,jm=0,jf1=0,jf2=0,jT=0;
   var ecoT=0;
   function frame(t){
-    var fiv=ECO?45:((demo||Math.abs(f-disp)>1.2||(follow&&mapOn))?15:32);if(document.hidden||t-ecoT<fiv){requestAnimationFrame(frame);return}ecoT=t;
+    var dimOn=$("dim").classList.contains("open"),fiv=dimOn?250:(ECO?66:((demo||Math.abs(f-disp)>1.5||(follow&&mapOn))?22:33));if(document.hidden||t-ecoT<fiv){requestAnimationFrame(frame);return}ecoT=t;
     var dt=lastT?Math.min(.1,(t-lastT)/1000):.016;lastT=t;
     if(yaw!==0&&moving()&&!gdrag){yaw=((yaw+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;yaw*=Math.exp(-dt/.15);if(Math.abs(yaw)<.01)yaw=0;if(b3)b3.setYaw(yaw)}
     var gk=1-Math.exp(-dt/.12);gLatD+=(gLat-gLatD)*gk;gLonD+=(gLon-gLonD)*gk;
@@ -1730,18 +1759,16 @@ function Bike3D(cv,MODEL){
     if(t-jT>=50){jT=t;var jd=Math.abs(f-2*jf1+jf2);jf2=jf1;jf1=f;jm+=(jd-jm)*(1-Math.exp(-.05/.5))}
     disp+=(f-disp)*(1-Math.exp(-dt/(.11+Math.min(1,Math.max(0,(jm-.25)/.4))*.3)));
     if(spdT!=null){
-      /* vitesse fluide : l'accelerometre fait avancer le compteur entre deux points GPS, chaque point GPS recale (retard GPS ~0,6 s compense) */
-      var useA=!demo&&fwdOK&&spdT>3;
-      if(spdD==null||Math.abs(spdT-spdD)>40){spdD=spdT;spdHist=[]}
-      else if(useA){spdD+=Math.max(-1.2,Math.min(1.2,gS-spdBias))*9.81*3.6*dt;spdHist.push([t,spdD]);while(spdHist.length&&t-spdHist[0][0]>600)spdHist.shift()}
-      else spdD+=(spdT-spdD)*(1-Math.exp(-dt/.45));
-      if(spdT<1)spdD+=(0-spdD)*(1-Math.exp(-dt/.3));if(spdD<0)spdD=0;
-      spdV=spdV==null?spdD:spdV+(spdD-spdV)*(1-Math.exp(-dt/.15));
-      var sv=Math.round(spdV);if(spdLast!=null&&Math.abs(spdV-spdLast)<.6)sv=spdLast;spdLast=sv;setH("spd",sv+' <small>km/h</small>')}else{spdD=null;spdV=null;spdLast=null;spdHist=[]}
+      /* vitesse fluide : uniquement le GPS (fiable), avec une petite anticipation de la tendance entre deux points */
+      var age=Math.min(1.3,(performance.now()-spdFT)/1000),tgt=demo?spdT:Math.max(0,spdT+spdA*Math.min(.9,age+.25));
+      if(spdD==null||Math.abs(tgt-spdD)>35)spdD=tgt;else spdD+=(tgt-spdD)*(1-Math.exp(-dt/.32));
+      if(spdT<1.5)spdD+=(0-spdD)*(1-Math.exp(-dt/.25));if(spdD<0)spdD=0;
+      var sv=Math.round(spdD);if(spdLast!=null&&Math.abs(spdD-spdLast)<.6)sv=spdLast;spdLast=sv;setH("spd",sv+' <small>km/h</small>')}else{spdD=null;spdLast=null}
     var dch=false;
-    if(vw==="bike"&&b3){var gq=Math.abs(gLonD),pd=(gLonD<0?-1:1)*Math.max(0,gq-.03)*14;pd=Math.max(-6,Math.min(6,pd));if(gLonD>.13)pd=Math.min(14,pd+(gLonD-.13)*60);
+    var see=!mapOn&&!dimOn;
+    if(vw==="bike"&&b3&&see){var gq=Math.abs(gLonD),pd=(gLonD<0?-1:1)*Math.max(0,gq-.03)*14;pd=Math.max(-6,Math.min(6,pd));if(gLonD>.13)pd=Math.min(14,pd+(gLonD-.13)*60);
       dch=b3.setDyn(pd,Math.max(0,Math.min(1,(-gLonD-.08)/.22)),demo?Math.max(v*3.6,0):v*3.6,maxL,maxR)}
-    if(vw==="bike"&&(dch||lastDeg===null||Math.abs(disp-lastDeg)>.02)){lastDeg=disp;if(b3)b3.setLean(disp);else $("bikeimg").style.transform="translate3d(0,0,0) rotate("+disp.toFixed(2)+"deg)"}
+    if(vw==="bike"&&see&&(dch||lastDeg===null||Math.abs(disp-lastDeg)>.05)){lastDeg=disp;if(b3)b3.setLean(disp);else $("bikeimg").style.transform="translate3d(0,0,0) rotate("+disp.toFixed(2)+"deg)"}
     if(follow){var dh=((hT-hd+540)%360)-180;hd=(hd+dh*(1-Math.exp(-dt/.3))+360)%360;var mtr="translateY(9%) rotate("+(-hd).toFixed(1)+"deg)";if(cc.mtr!==mtr){cc.mtr=mtr;$("map").style.transform=mtr}}
     requestAnimationFrame(frame);
   }
@@ -1836,7 +1863,7 @@ function Bike3D(cv,MODEL){
     try{
       if(!(await ensure()))return;
       gps();
-      raw=[];rawT=0;movS=null;gEnv=null;gPk={l:0,r:0,a:0,b:0};rainT=0;lapReset();dpL=0;altA=altS;hsA=0;htA=0;hfL=hfM=f;hfT=0;ride={bike:curBike,id:Date.now(),t0:Date.now(),t1:Date.now(),mL:0,mR:0,mV:0,gA:0,gB:0,gL:0,hb:0,p:[],c:[]};if(gate)ride.gate=gate;pv=null;gl=0;hbArm=true;cs={on:false};lastStore=0;if(live)live.setLatLngs([]);liveSegs.forEach(function(x){map&&map.removeLayer(x)});liveSegs=[];prevLL=null;
+      raw=[];rawT=0;movS=null;acDone=false;acT=0;gEnv=null;gPk={l:0,r:0,a:0,b:0};rainT=0;lapReset();dpL=0;altA=altS;hsA=0;htA=0;hfL=hfM=f;hfT=0;ride={bike:curBike,id:Date.now(),t0:Date.now(),t1:Date.now(),mL:0,mR:0,mV:0,gA:0,gB:0,gL:0,hb:0,p:[],c:[]};if(gate)ride.gate=gate;pv=null;gl=0;hbArm=true;cs={on:false};lastStore=0;if(live)live.setLatLngs([]);liveSegs.forEach(function(x){map&&map.removeLayer(x)});liveSegs=[];prevLL=null;
       on=true;wxLast.t=0;setTimeout(wxCheck,3000);$("start").textContent="Terminer";$("start").classList.add("rec");
       $("msg").textContent="Sortie en cours. L'angle apparaît au-dessus de "+MIN+" km/h.";
       try{wl=await navigator.wakeLock.request("screen")}catch(e){}
@@ -1875,6 +1902,8 @@ function Bike3D(cv,MODEL){
     }
     try{wl&&wl.release&&wl.release()}catch(e){}
     if(raw.length){try{localStorage.setItem("rawlast",JSON.stringify(raw))}catch(e){}}
+    v=0;spdT=null;spdD=null;spdLast=null;gLat=0;gLon=0;gLatD=0;gLonD=0;gS=0;gl=0;setH("spd",'0 <small>km/h</small>');
+    if(b3){b3.setDyn(0,0,0,maxL,maxR);b3.setRain(false)}
     on=false;frozen=true;$("start").textContent="Démarrer";$("start").classList.remove("rec");draw();
     if(openId){endSummary(openId);try{if(localStorage.getItem("autobk")==="1"&&bkDue())doBackup()}catch(e){}}
   }
@@ -1903,19 +1932,22 @@ function Bike3D(cv,MODEL){
   function calLabel(){$("clb").textContent=wOff?"Calibré \u2713":"Calibrer"}
   function calStep(w){
     var k=v*3.6,now=Date.now();
-    if(k<40){cal=null;$("msg").textContent="Calibrage annul\u00E9 : vitesse tomb\u00E9e sous 40 km/h. Recommence sur une ligne droite.";return}
+    var au=cal.auto;
+    if(k<40){cal=null;if(au)acT=now;else $("msg").textContent="Calibrage annul\u00E9 : vitesse tomb\u00E9e sous 40 km/h. Recommence sur une ligne droite.";return}
     cal.w.push(w);cal.v+=v;
     var t=(now-cal.t0)/1000;
-    if(t<6){var m="Calibrage en cours, roule droit : "+Math.ceil(6-t)+" s";if(cc.calm!==m){cc.calm=m;$("msg").textContent=m}return}
+    if(t<6){if(!au){var m="Calibrage en cours, roule droit : "+Math.ceil(6-t)+" s";if(cc.calm!==m){cc.calm=m;$("msg").textContent=m}}return}
     var n=cal.w.length,mu=av(cal.w),sd=Math.sqrt(av(cal.w.map(function(x){return(x-mu)*(x-mu)})));vm=cal.v/n;cal=null;cc.calm=null;
     var bias=Math.atan(vm*mu/9.81)*180/Math.PI,noise=Math.atan(vm*sd/9.81)*180/Math.PI;
+    if(au&&(n<60||Math.abs(bias)>5||noise>5)){acT=now;return}
     if(n<60){$("msg").textContent="Calibrage trop court (pas assez de mesures). Recommence.";return}
     if(Math.abs(bias)>8||noise>8){$("msg").textContent="Pas assez droit pour calibrer (biais "+bias.toFixed(1)+"\u00B0, bruit "+noise.toFixed(1)+"\u00B0). Recommence sur une ligne droite.";return}
     wOff=mu;DL=Math.max(2,Math.min(5,Math.round(noise*3)/2));
     try{localStorage.setItem('woff',String(wOff));localStorage.setItem('dl',String(DL))}catch(e){}
-    calLabel();$("msg").textContent="Calibrage termin\u00E9 : d\u00E9calage corrig\u00E9 ("+bias.toFixed(1)+"\u00B0), zone morte r\u00E9gl\u00E9e \u00E0 "+DL+"\u00B0.";
+    if(au)acDone=true;
+    calLabel();$("msg").textContent=(au?"Calibrage automatique fait":"Calibrage termin\u00E9")+" : d\u00E9calage corrig\u00E9 ("+bias.toFixed(1)+"\u00B0), zone morte r\u00E9gl\u00E9e \u00E0 "+DL+"\u00B0.";
   }
-  var vm=0;
+  var vm=0,acDone=false,acT=0;
   $("clb").onclick=function(){
     if(wOff&&!cal){if(confirm("Effacer le calibrage actuel ? (OK = effacer, Annuler = refaire)")){wOff=0;DL=3;try{localStorage.removeItem('woff');localStorage.removeItem('dl')}catch(e){}calLabel();$("msg").textContent="Calibrage effac\u00E9.";return}}
     if(!on){$("msg").textContent="Touche d\u2019abord D\u00E9marrer, puis roule droit \u00E0 plus de 40 km/h et re-touche Calibrer.";return}
@@ -3098,7 +3130,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 118 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 121 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
