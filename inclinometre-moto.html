@@ -752,7 +752,7 @@ function Bike3D(cv,MODEL){
     var cx=V[0]*x+V[4]*y+V[8]*z+V[12],cy=V[1]*x+V[5]*y+V[9]*z+V[13],cw=V[3]*x+V[7]*y+V[11]*z+V[15];
     return[(cx/cw+1)/2*cv.clientWidth,(1-cy/cw)/2*cv.clientHeight,cw];
   }
-  function fxSync(){var ECO0={g:1,s:1,sl:1,fu:1,bf:1,rd:1,rn:1,ng:1};for(var k in fxU)fx[k]=(eco&&ECO0[k])?0:fxU[k]}
+  var mini=false;function fxSync(){var ECO0={g:1,s:1,sl:1,fu:1,bf:1,rd:1,rn:1,ng:1};for(var k in fxU)fx[k]=(eco&&ECO0[k])?0:fxU[k];if(mini){fx.rd=0;fx.rn=0;fx.sl=0;fx.pr=0}}
   function clamp(x,a,b){return x<a?a:x>b?b:x}
   function mix3(a,b,t){return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]}
   function proj(p){
@@ -831,7 +831,7 @@ function Bike3D(cv,MODEL){
   function mkOv(front){
     var c=document.createElement("canvas");c.setAttribute("aria-hidden","true");
     c.style.cssText="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;border-radius:26px";
-    var p=cv.parentNode;if(!p)return null;p.insertBefore(c,front?cv.nextSibling:cv);return c;
+    var p=cv.parentNode;if(!p)return null;try{if(mini&&getComputedStyle(p).position==="static")p.style.position="relative"}catch(e){}p.insertBefore(c,front?cv.nextSibling:cv);return c;
   }
 
   /* ---------- meteo du moment : soleil, nuages, pluie, neige, brouillard, orage ---------- */
@@ -845,6 +845,18 @@ function Bike3D(cv,MODEL){
     bl.forEach(function(q){var g=x.createRadialGradient(q[0],q[1]+6,2,q[0],q[1],q[2]);g.addColorStop(0,"rgba("+col+",1)");g.addColorStop(.7,"rgba("+col+",.96)");g.addColorStop(1,"rgba("+col+",0)");x.fillStyle=g;x.beginPath();x.arc(q[0],q[1],q[2],0,7);x.fill()});
     x.globalCompositeOperation="source-atop";var gs=x.createLinearGradient(0,40,0,118);gs.addColorStop(0,"rgba("+sh+",0)");gs.addColorStop(1,"rgba("+sh+",.85)");x.fillStyle=gs;x.fillRect(0,0,260,120);
     sprC[key]=c;return c}
+  /* phase de la lune du jour (0 = nouvelle, 0,5 = pleine) */
+  function moonPh(){var d=(Date.now()-Date.UTC(2000,0,6,18,14))/864e5,s=29.530588853;return((d%s)+s)%s/s}
+  var mSpr={k:"",c:null};
+  function moonSpr(p,r){r=Math.max(4,r);var k=Math.round(p*200)+":"+r;if(mSpr.k===k)return mSpr.c;
+    var c=document.createElement("canvas");c.width=c.height=r*2+2;var x=c.getContext("2d"),o=r+1;
+    x.fillStyle="rgba(150,160,190,.22)";x.beginPath();x.arc(o,o,r,0,7);x.fill();   /* partie dans l'ombre, a peine visible */
+    var L=document.createElement("canvas");L.width=L.height=c.width;var y=L.getContext("2d"),cs=Math.cos(2*Math.PI*p),wax=p<.5;
+    y.fillStyle="#eef1ff";y.beginPath();y.arc(o,o,r,-Math.PI/2,Math.PI/2,!wax);y.closePath();y.fill();   /* moitie eclairee (a droite quand la lune croit) */
+    y.beginPath();y.ellipse(o,o,Math.max(.01,r*Math.abs(cs)),r,0,0,7);
+    if(cs<0){y.fill()}else{y.globalCompositeOperation="destination-out";y.fill();y.globalCompositeOperation="source-over"}   /* gibbeuse : on ajoute ; croissant : on retire */
+    y.globalCompositeOperation="source-atop";y.fillStyle="rgba(170,180,210,.35)";[[-.3,-.2,.18],[.25,.15,.14],[-.05,.4,.11],[.35,-.35,.08]].forEach(function(q){y.beginPath();y.arc(o+q[0]*r,o+q[1]*r,q[2]*r,0,7);y.fill()});
+    x.drawImage(L,0,0);mSpr={k:k,c:c};return c}
   function skyOn(){return fx.rn&&!!wx.k}
   function skyDraw(b,f,W,H,dt,tsec,sc,hz){
     var k=wx.k;if(!k)return;
@@ -871,9 +883,9 @@ function Bike3D(cv,MODEL){
       }else{
         if(!stars.length)for(var s0=0;s0<26;s0++)stars.push({x:Math.random(),y:Math.random()*.5,p:Math.random()*6,s:.6+Math.random()*.9});
         stars.forEach(function(s1){b.fillStyle="rgba(255,255,255,"+(.25+.35*(.5+.5*Math.sin(tsec*1.6+s1.p)))+")";b.beginPath();b.arc(s1.x*W,s1.y*H,s1.s*sc,0,7);b.fill()});
-        var gm=b.createRadialGradient(sx,sy,sr*.5,sx,sy,sr*3);gm.addColorStop(0,"rgba(200,215,255,.30)");gm.addColorStop(1,"rgba(200,215,255,0)");b.fillStyle=gm;b.fillRect(sx-sr*3,sy-sr*3,sr*6,sr*6);
-        b.fillStyle="#eef1ff";b.beginPath();b.arc(sx,sy,sr*.85,0,7);b.fill();
-        b.globalCompositeOperation="destination-out";b.beginPath();b.arc(sx+sr*.42,sy-sr*.22,sr*.75,0,7);b.fill();b.globalCompositeOperation="source-over";
+        var mp=moonPh(),lit=(1-Math.cos(2*Math.PI*mp))/2;
+        var gm=b.createRadialGradient(sx,sy,sr*.5,sx,sy,sr*3);gm.addColorStop(0,"rgba(200,215,255,"+(.06+.26*lit).toFixed(3)+")");gm.addColorStop(1,"rgba(200,215,255,0)");b.fillStyle=gm;b.fillRect(sx-sr*3,sy-sr*3,sr*6,sr*6);
+        b.drawImage(moonSpr(mp,Math.round(sr*.85*(b.canvas.width/W))),sx-sr*.85,sy-sr*.85,sr*1.7,sr*1.7);
       }
       b.restore();
     }
@@ -908,7 +920,9 @@ function Bike3D(cv,MODEL){
     fx0/=l;fz0/=l;var D=400,c=[lastE[0]+fx0*D,0,lastE[2]+fz0*D],a=projW([c[0]+fz0*D,0,c[2]-fx0*D]),b2=projW([c[0]-fz0*D,0,c[2]+fx0*D]);
     if(a[2]<=0||b2[2]<=0)return null;var s=(b2[1]-a[1])/((b2[0]-a[0])||1e-6);
     return{y0:a[1]+(0-a[0])*s,yW:a[1]+(W-a[0])*s,at:function(x){return a[1]+(x-a[0])*s}}}
-  function projS(p){var q=projR(p);if(SQ&&q[2]>0&&q[1]<SQ.yl)q[1]=SQ.yh+SQ.a*(q[1]-SQ.yR);return q}   /* vue arriere : le loin est ramene vers l'horizon de decor */
+  /* vue arriere : transformation "en perspective" qui ramene l'horizon vers le haut du cadre tout en gardant les lignes droites
+     (la route reste bien droite, sans cassure) ; identique au pied de la moto et en bas de l'ecran */
+  function projS(p){var q=projR(p);if(SQ&&q[2]>0){var Y=q[1]-SQ.yR,den=Math.max(.05,SQ.c*Y+1);q[1]=SQ.yR+(SQ.a*Y+SQ.b)/den;q[0]=SQ.xv+(q[0]-SQ.xv)*SQ.sx/den}return q}   /* vue arriere : le loin est ramene vers l'horizon de decor */
   function hx(n){var x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x)}
   function skyCols(){var k=wx.k||"clear";
     if(night)return k==="clear"||k==="few"?["#0b1030","#26305e"]:["#14182c","#363c58"];
@@ -1011,7 +1025,7 @@ function Bike3D(cv,MODEL){
 
 
   function wantFx(){return (fx.sl&&spd>12)||parts.length>0||(fx.s&&Math.abs(lean)>30)||(fx.fu&&spd>5)||smoke.length>0||(fx.rd&&spd>3)||(fx.rn&&rainOn)||drops.length>0||(fx.cl&&Math.abs(lean)>10)||pops.length>0||(fx.rd&&Math.abs(roadX-roadTg())>.01)}
-  function roadTg(){return -1.35*(1-clamp((spd-1.5)/10,0,1))}
+  var parkOK=true;function roadTg(){return parkOK?-1.35*(1-clamp((spd-1.5)/10,0,1)):0}
   function wantLoop(){return wantFx()||skyOn()}
   function ensureLoop(){if(loopOn||!wantLoop())return;loopOn=true;requestAnimationFrame(tick)}
   function tick(ts){loopOn=false;if(document.hidden||!cv.clientWidth)return;if(ts-lastFx>(wantFx()?(eco?66:33):90))fxDraw(ts);ensureLoop()}
@@ -1029,8 +1043,9 @@ function Bike3D(cv,MODEL){
     var hz=fx.rd?horizon(W,H):null,shY=0;
     if(fx.rd){var hy0=hz?Math.min(hz.y0,hz.yW):-1e9;
       SQ=null;
-      if(cam===0&&hy0<H*.14){var yR0=hz?hz.at(W/2):-H*3,yh0=H*.29,yl0=yh0+(H-yh0)*.34;hz={y0:yh0,yW:yh0,at:function(){return yh0},fake:1};
-        if(yR0<yh0-5)SQ={yR:yR0,yh:yh0,yl:yl0,a:(yl0-yh0)/(yl0-yR0)}}   /* vue arriere : horizon "de decor", on voit la route jusqu'au bout */
+      if(cam===0&&hy0<H*.14){var yR0=hz?hz.at(W/2):-H*3,yh0=H*.29;hz={y0:yh0,yW:yh0,at:function(){return yh0},fake:1};
+        var Yc=projR([0,0,0])[1]-yR0,Yb=H-yR0,bq=yh0-yR0;
+        if(bq>5&&Yc>bq+5&&Yb>Yc+5){var cq=-bq/(Yc*Yb);SQ={yR:yR0,xv:W/2,b:bq,c:cq,a:1-bq/Yb-bq/Yc,sx:1+cq*Yc}}}   /* vue arriere : horizon "de decor", on voit la route jusqu'au bout */
       else if(!hz||hy0<-H)hz={y0:-H,yW:-H,at:function(){return -H},fake:1}}               /* vue de dessus : tout en sol */
     if(hz)shY=sceneBack(b,W,H,hz,tsec);
     if(skyOn())skyDraw(b,f,W,H,dt,tsec,sc,hz);
@@ -1061,6 +1076,23 @@ function Bike3D(cv,MODEL){
         if(circOn&&parkK<.98){var ko=off%2.4;b.globalAlpha=1-parkK;for(z=zA+ko-2.4;z>-40;z-=1.2){var rr0=Math.round((z-ko)/1.2)%2===0,cc=rr0?"#e62828":"#ffffff";sq(-RW-.22,-RW,z,z-1.2,cc);sq(RW,RW+.22,z,z-1.2,cc)}b.globalAlpha=1}
         for(z=zA-((zA-off)%6);z>Math.max(zB,-160);z-=6){var wq=P(0,z)[2];if(wq>.3)sq(-.06,.06,z,z-3,hzc(lw,wq))}
         if(fx.rn&&rainOn){b.fillStyle=night?"rgba(160,180,255,.10)":"rgba(255,255,255,.18)";sq(-.6,.6,6,-12)}
+        if(parkK>.02){
+          /* aire d'arret sur le bas-cote : gravier, cailloux, fleurs */
+          b.globalAlpha=parkK;var e0=RW+.22,zs=[],kz;for(kz=4;kz>=-8;kz-=.5)zs.push(kz);
+          function wz(z){var u=(z+2)/6;return .25+1.55*Math.exp(-u*u*1.6)}
+          b.beginPath();zs.forEach(function(z,k){var q=P(e0,z);k?b.lineTo(q[0],q[1]):b.moveTo(q[0],q[1])});for(kz=zs.length-1;kz>=0;kz--){var q2=P(e0+wz(zs[kz]),zs[kz]);b.lineTo(q2[0],q2[1])}b.closePath();
+          var gq=P(e0,4),gf=P(e0,-8),ggr=b.createLinearGradient(0,gf[1],0,gq[1]);ggr.addColorStop(0,night?"#4a463c":"#c9bc9b");ggr.addColorStop(1,night?"#3d392f":"#b3a47f");b.fillStyle=ggr;b.fill();
+          b.strokeStyle=night?"rgba(20,30,20,.5)":"rgba(70,95,45,.55)";b.lineWidth=2;b.beginPath();zs.forEach(function(z,k){var q=P(e0+wz(z),z);k?b.lineTo(q[0],q[1]):b.moveTo(q[0],q[1])});b.stroke();
+          for(var pi=0;pi<90;pi++){var pz=4-hx(pi+300)*12,px2=e0+hx(pi+700)*wz(pz)*.95,pp=P(px2,pz),pr=Math.max(.6,Math.abs(P(px2+.05,pz)[0]-pp[0]));if(pp[2]<.3)continue;
+            b.fillStyle=hx(pi+900)<.5?(night?"#5c574b":"#9c8f72"):(night?"#6b6658":"#e0d6bd");b.beginPath();b.ellipse(pp[0],pp[1],pr,pr*.6,0,0,7);b.fill()}
+          var FL=night?["#9aa0b8","#7d8299"]:["#ffffff","#ffd23a","#c58bff","#ff7fa8"];
+          for(pi=0;pi<46;pi++){var fz=4.5-hx(pi+1300)*13,fx2=e0+wz(fz)+.05+hx(pi+1500)*.9,fp=P(fx2,fz),fr=Math.max(.8,Math.abs(P(fx2+.04,fz)[0]-fp[0]));if(fp[2]<.3)continue;
+            var fs2=projS([fx2+X0,.12+hx(pi+1700)*.12,fz]);b.strokeStyle=night?"rgba(40,70,45,.8)":"rgba(60,110,45,.9)";b.lineWidth=1;b.beginPath();b.moveTo(fp[0],fp[1]);b.lineTo(fs2[0],fs2[1]);b.stroke();
+            b.fillStyle=FL[pi%FL.length];b.beginPath();b.arc(fs2[0],fs2[1],fr*1.2,0,7);b.fill()}
+          [[e0+1.2,-4.5,.22],[e0+.9,1.2,.15]].forEach(function(rk){var r0=P(rk[0],rk[1]),r1=P(rk[0]+rk[2],rk[1]),rt=projS([rk[0]+X0+rk[2]/2,rk[2]*.7,rk[1]]);if(r0[2]<.3)return;var rw=Math.abs(r1[0]-r0[0]);
+            b.fillStyle=night?"#55565e":"#8f8c86";b.beginPath();b.moveTo(r0[0],r0[1]);b.quadraticCurveTo(r0[0],rt[1],(r0[0]+r1[0])/2,rt[1]);b.quadraticCurveTo(r1[0],rt[1],r1[0],r1[1]);b.closePath();b.fill();
+            b.fillStyle=night?"rgba(255,255,255,.08)":"rgba(255,255,255,.25)";b.beginPath();b.ellipse((r0[0]+r1[0])/2-rw*.12,rt[1]+(r0[1]-rt[1])*.35,Math.max(.1,rw*.18),Math.max(.1,Math.abs(r0[1]-rt[1])*.15),0,0,7);b.fill()});
+          b.globalAlpha=1}
         roadside(b,P,X0,RW,zA,zB,0);
         /* brume a l'horizon : cache la coupure */
         var ym2=Math.min(hy(0),hy(W)),ymx=Math.max(hy(0),hy(W)),gh=b.createLinearGradient(0,ym2,0,ymx+H*(SQ?.03:.07));gh.addColorStop(0,hexA(skyCols()[1].length===7?skyCols()[1]:"#cfe7fb",.9));gh.addColorStop(1,hexA(skyCols()[1].length===7?skyCols()[1]:"#cfe7fb",0));
@@ -1222,7 +1254,7 @@ function Bike3D(cv,MODEL){
     hasLamps:function(){return[!!lampH,!!lampT]},
     setForceP:function(v){forceP=!!v},
     setFinish:function(v){fin=v|0;render()},setCam:function(v){cam=v|0;render()},setNeon:function(v){neonI=v|0;render()},setNum:function(t){numTxt=String(t||"").slice(0,3);render()},
-    setRain:function(v){rainOn=!!v;ensureLoop()},setLim:function(v){limV=v|0},setRoad:function(r,k){roadRef=r||"";rideKm=k||0},setScene:function(k,hi){if(k!==scn||!!hi!==scnHigh){scn=k||"plain";scnHigh=!!hi;kSky="";kLand="";render()}},setSky:function(c){var k=wxKind(c);if(k!==wx.k){wx={k:k,t:performance.now()/1000};clouds=[];stars=[]}rainOn=(k==="rain"||k==="storm");ensureLoop();render()},setCircuit:function(v){circOn=!!v},
+    setRain:function(v){rainOn=!!v;ensureLoop()},setPark:function(v){v=!!v;if(v!==parkOK){parkOK=v;ensureLoop()}},setMini:function(v){mini=!!v;fxSync();render()},setLim:function(v){limV=v|0},setRoad:function(r,k){roadRef=r||"";rideKm=k||0},setScene:function(k,hi){if(k!==scn||!!hi!==scnHigh){scn=k||"plain";scnHigh=!!hi;kSky="";kLand="";render()}},setSky:function(c){var k=wxKind(c);if(k!==wx.k){wx={k:k,t:performance.now()/1000};clouds=[];stars=[]}rainOn=(k==="rain"||k==="storm");ensureLoop();render()},setCircuit:function(v){circOn=!!v},
     snap:function(){render();return[cB,cv,cF]},
     setModel:function(b64){
       try{D=[];lampT=null;lampH=null;useModel=false;IDX=null;build();loadModel(b64);DATA=new Float32Array(D);D=null;
@@ -1237,7 +1269,12 @@ function Bike3D(cv,MODEL){
 </script>
 <script>
 (function(){
-  var wOff=0,DL=3,cal=null,GR=1.4,spdT=null,spdD=null,spdLast=null;
+  var wOff=0,DL=3,cal=null,GR=1.0,spdT=null,spdD=null,spdLast=null;
+  /* iPhone/iPad : Safari remplit rotationRate alpha/beta/gamma avec les axes x/y/z de l'appareil (pas z/x/y comme la norme).
+     Corrige en v140 ; les reglages appris avec l'ancienne formule sont effaces une fois. */
+  var IOSR=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  try{if(localStorage.getItem("axfix")!=="1"){["afax","woff","dl"].forEach(function(k){localStorage.removeItem(k)});localStorage.setItem("axfix","1")}}catch(e){}
+  var oA=null,oB=null,oG=null,acX=null,acY=null,acZ=null,agX=null,agY=null,agZ=null,gAcc=null,gHd=null,gSr=null;
   var spdFT=0,spdPrev=null,spdA=0;
   function spdFix(){var now=performance.now();if(spdT==null){spdPrev=null;spdA=0;return}
     if(spdPrev!=null){var dtf=(now-spdFT)/1000;if(dtf>.3&&dtf<3){var a=(spdT-spdPrev)/dtf;a=Math.max(-12,Math.min(8,a));spdA+=(a-spdA)*.55}}else spdA=0;
@@ -1260,6 +1297,7 @@ function Bike3D(cv,MODEL){
   }
   function ori(e){
     if(e.beta==null||e.gamma==null)return;
+    oA=e.alpha;oB=e.beta;oG=e.gamma;
     var b=e.beta*Math.PI/180,g=e.gamma*Math.PI/180;
     ux=-Math.cos(b)*Math.sin(g);uy=Math.sin(b);uz=Math.cos(b)*Math.cos(g);haveUp=true;
     if(test){
@@ -1303,7 +1341,8 @@ function Bike3D(cv,MODEL){
   function mot(e){
     if(test||demo)return;
     var r=e.rotationRate;if(!r||r.alpha==null||!haveUp)return;
-    var w=(r.beta*ux+r.gamma*uy+r.alpha*uz)*Math.PI/180;
+    var w=(IOSR?(r.alpha*ux+r.beta*uy+r.gamma*uz):(r.beta*ux+r.gamma*uy+r.alpha*uz))*Math.PI/180;
+    var aI=e.accelerationIncludingGravity,aN=e.acceleration;if(aI&&aI.x!=null){agX=aI.x;agY=aI.y;agZ=aI.z}if(aN&&aN.x!=null){acX=aN.x;acY=aN.y;acZ=aN.z}
     var ac0=e.acceleration;if(ac0&&ac0.x!=null&&ac0.y!=null&&ac0.z!=null)accStep(ac0);
     if(cal)calStep(w);
     else if(on&&!acDone&&v*3.6>=45&&Math.abs(fsl)<3&&Date.now()-acT>3000)cal={t0:Date.now(),w:[],v:0,auto:true};
@@ -1338,7 +1377,10 @@ function Bike3D(cv,MODEL){
       if(fsl>maxR)maxR=fsl;if(-fsl>maxL)maxL=-fsl;
       if(ride){if(fsl>ride.mR)ride.mR=fsl;if(-fsl>ride.mL)ride.mL=-fsl;track()}
     }else{wqOn=false;zcr=[];zst=0;zk=1;lgs+=(0-lgs)*0.1;f+=(0-f)*0.1;fy=f;afLY=f;afLA=null;fsl+=(0-fsl)*0.1;lgv+=(0-lgv)*0.1;hfL=hfM=f}
-    if(rawOn&&ride){var tr=performance.now();if(tr-rawT>=50){rawT=tr;raw.push([Date.now(),+v.toFixed(2),+wRaw.toFixed(4),+(r.alpha||0).toFixed(2),+(r.beta||0).toFixed(2),+(r.gamma||0).toFixed(2),+ux.toFixed(3),+uy.toFixed(3),+uz.toFixed(3),+f.toFixed(2),+fsl.toFixed(2)])}}
+    if(rawOn&&ride){var tr=performance.now();if(tr-rawT>=50){rawT=tr;raw.push([Date.now(),+v.toFixed(2),+wRaw.toFixed(4),+(r.alpha||0).toFixed(2),+(r.beta||0).toFixed(2),+(r.gamma||0).toFixed(2),+ux.toFixed(3),+uy.toFixed(3),+uz.toFixed(3),+f.toFixed(2),+fsl.toFixed(2),lastLat!=null?+lastLat.toFixed(6):null,lastLon!=null?+lastLon.toFixed(6):null,Math.round(hT||0),
+      gHd!=null?Math.round(gHd):null,gAcc!=null?Math.round(gAcc):null,gSr!=null?+gSr.toFixed(2):null,altS!=null?Math.round(altS):null,
+      acX!=null?+acX.toFixed(2):null,acY!=null?+acY.toFixed(2):null,acZ!=null?+acZ.toFixed(2):null,agX!=null?+agX.toFixed(2):null,agY!=null?+agY.toFixed(2):null,agZ!=null?+agZ.toFixed(2):null,
+      oA!=null?+oA.toFixed(1):null,oB!=null?+oB.toFixed(1):null,oG!=null?+oG.toFixed(1):null,+disp.toFixed(1),afOK?1:0,cal?1:0])}}
     checkAlert();
     var dn=performance.now();if(dn-drT>=50||demo||test){drT=dn;draw()}
   }
@@ -1363,12 +1405,12 @@ function Bike3D(cv,MODEL){
     unz(M3L[i]).then(function(d){if(tk!==m3Tok)return;var ok=true;[b3,r3].forEach(function(b){if(b&&!b.setModel(d))ok=false});cb&&cb(ok)}).catch(function(){if(tk===m3Tok)cb&&cb(false)});
   }
   try{b3=Bike3D($("bike3d"),null);if(b3){$("bikewrap").classList.add("b3")}}catch(e){b3=null}
-  try{r3=Bike3D($("rbike3d"),null);if(r3){$("rwrap").classList.add("b3")}}catch(e){r3=null}
+  try{r3=Bike3D($("rbike3d"),null);if(r3){$("rwrap").classList.add("b3");r3.setMini(true)}}catch(e){r3=null}
   if(b3){$("bike3d").style.opacity="0";setTimeout(function(){$("bike3d").style.opacity=""},2500)}
   m3Load(M3I,function(ok){$("bike3d").style.opacity="";var m=$("msg");if(m)m.textContent=m.textContent.replace(/rendu : [^\]]*\]/,"rendu : "+(ok?M3N[M3I]+" 3D":"moto 3D simple")+"]")});
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(M3N[M3I]+" 3D"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v138 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v143 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1,ts:1,pr:1,cl:1,fd:1,bf:1,rd:1,rn:1,ng:0},P2=-1,Z3=1,FIN=0,CAM=0,NEON=7,NUM="46";
   try{FIN=+localStorage.getItem("fin3")||0;CAM=+localStorage.getItem("cam3")||0;var ne=localStorage.getItem("neon3");if(ne!=null)NEON=+ne;NUM=localStorage.getItem("num3")||"46"}catch(e){}
@@ -1389,7 +1431,7 @@ function Bike3D(cv,MODEL){
   var lastTouch=0,yaw=0,vw="bike",gx0=0,gy0=0,gdrag=false,gmoved=false,gyaw0=0,gLat=0,gLon=0,gH=[],gLastS=0,gLastD=0,gLatD=0,gLonD=0,gmS=1,lgs=0;
   function moving(){return demo||v*3.6>=3}
   /* ---------- double-tap sur la moto a l'arret : demarrage en wheelie ---------- */
-  var tapTm=null,tapLast=0,wAnim=null;
+  var tapTm=null,tapLast=0,wAnim=null,stopSince=0;
   function wheelie(){
     if(!b3||wAnim||moving()){if(moving())$("msg").textContent="Le wheelie, c\u2019est seulement \u00E0 l\u2019arr\u00EAt \uD83D\uDE09";return}
     wAnim={t0:performance.now(),y0:yaw,man:false,my:0,cy:yaw};b3.setForceP(true);try{navigator.vibrate&&navigator.vibrate([40,60,120])}catch(e){}
@@ -2216,6 +2258,8 @@ function Bike3D(cv,MODEL){
       var sv=Math.round(spdD);if(spdLast!=null&&Math.abs(spdD-spdLast)<.6)sv=spdLast;spdLast=sv;setH("spd",sv+' <small>km/h</small>')}else{spdD=null;spdLast=null}
     var dch=false;
     var see=!mapOn&&!dimOn;
+    /* feu rouge, stop, bouchon : pendant une sortie la moto reste sur la route ; elle ne va sur le bas-cote qu'apres 2 min a l'arret */
+    if(b3){if(on&&moving())stopSince=0;else if(on&&!stopSince)stopSince=t;b3.setPark(!on||(stopSince&&t-stopSince>120000))}
     if(wAnim&&b3){if(vw==="bike"&&see&&!moving())wheelieStep(t);else{var wa=wAnim;wAnim=null;b3.setForceP(false);yaw=wa.y0;b3.setYaw(yaw)}}
     else if(vw==="bike"&&b3&&see){var gq=Math.abs(gLonD),pd=(gLonD<0?-1:1)*Math.max(0,gq-.03)*14;pd=Math.max(-6,Math.min(6,pd));if(gLonD>.13)pd=Math.min(14,pd+(gLonD-.13)*60);
       dch=b3.setDyn(pd,Math.max(0,Math.min(1,(-gLonD-.08)/.22)),demo?Math.max(v*3.6,0):v*3.6,maxL,maxR)}
@@ -2275,7 +2319,7 @@ function Bike3D(cv,MODEL){
         if(altA==null)altA=altS;else if(altS-altA>=3){if(ride)dpL+=altS-altA;altA=altS}else if(altA-altS>=3)altA=altS;
         setT("alv",Math.round(altS)+" m");updHudAl();setT("adv","+"+Math.round(dpL)+" m");
       }
-      var hh=p.coords.heading;
+      var hh=p.coords.heading;gAcc=p.coords.accuracy;gHd=(hh!=null&&!isNaN(hh))?hh:null;gSr=s;
       if(hh!=null&&!isNaN(hh)&&v>1.5)hT=hh;
       else if(pLat!=null&&hav(pLat,pLon,lastLat,lastLon)>12)hT=brg(pLat,pLon,lastLat,lastLon);
       if(pLat==null||hav(pLat,pLon,lastLat,lastLon)>12){pLat=lastLat;pLon=lastLon}
@@ -2296,7 +2340,7 @@ function Bike3D(cv,MODEL){
       if(ride){
         if(v*3.6>ride.mV)ride.mV=v*3.6;
         var n=Date.now();
-        if(n-lastStore>=2000){lastStore=n;ride.p.push([+lastLat.toFixed(5),+lastLon.toFixed(5),Math.round(f),k,altS!=null?Math.round(altS):null]);ride.t1=n;ride.hs=+hsA.toFixed(2);ride.ht=+htA.toFixed(1);if(ride.p.length%10===0)persist()}
+        if(n-lastStore>=2000){lastStore=n;ride.p.push([+lastLat.toFixed(5),+lastLon.toFixed(5),Math.round(f),k,altS!=null?Math.round(altS):null,Math.round((n-ride.t0)/100)/10]);ride.t1=n;ride.hs=+hsA.toFixed(2);ride.ht=+htA.toFixed(1);if(ride.p.length%10===0)persist()}
       }
     },function(){setH("spd",'<span style="font-size:26px">GPS refusé</span>');$("msg").textContent="Autorise la localisation : Réglages > Confidentialité et sécurité > Service de localisation > Safari."},{enableHighAccuracy:true,maximumAge:0});
   }
@@ -2572,8 +2616,14 @@ function Bike3D(cv,MODEL){
     var d=raw;if(!d.length){try{d=JSON.parse(localStorage.getItem("rawlast")||"[]")}catch(e){d=[]}}
     if(!d.length){$("msg").textContent="Aucune donn\u00E9e brute : active \u00AB Brutes \u00BB, fais une sortie, puis exporte.";return}
     var rm=null;try{load().forEach(function(x){if(!rm&&x.t0<=d[0][0]+120000&&x.t1>=d[0][0]-120000)rm=x})}catch(e){}
-    var meta=rm?{debut:rm.t0,fin:rm.t1,duree_s:Math.round((rm.t1-rm.t0)/1000),batterie_depart:rm.bat0!=null?rm.bat0:null,batterie_arrivee:rm.bat1!=null?rm.bat1:null,ecran_allume_s:rm.mt?rm.mt.on:null,ecran_noir_s:rm.mt?rm.mt.dim:null,carte_s:rm.mt?rm.mt.map:null,arriere_plan_s:rm.mt?Math.max(0,Math.round((rm.t1-rm.t0)/1000-rm.mt.on-rm.mt.dim)):null,reglages:rm.mt?rm.mt.set:null}:null;
-    saveFile("brutes-moto-"+d[0][0]+".json","application/json",JSON.stringify({app:"angle-moto",meta:meta,cols:["t","v","w","ra","rb","rg","ux","uy","uz","f","fs"],n:d.length,rows:d}));
+    var meta=rm?{debut:rm.t0,fin:rm.t1,debut_heure:new Date(rm.t0).toLocaleString("fr-FR"),fin_heure:new Date(rm.t1).toLocaleString("fr-FR"),duree_s:Math.round((rm.t1-rm.t0)/1000),batterie_depart:rm.bat0!=null?rm.bat0:null,batterie_arrivee:rm.bat1!=null?rm.bat1:null,ecran_allume_s:rm.mt?rm.mt.on:null,ecran_noir_s:rm.mt?rm.mt.dim:null,carte_s:rm.mt?rm.mt.map:null,arriere_plan_s:rm.mt?Math.max(0,Math.round((rm.t1-rm.t0)/1000-rm.mt.on-rm.mt.dim)):null,reglages_sortie:rm.mt?rm.mt.set:null}:null;
+    var stats=null;try{if(rm){var c0=calc(rm);stats={distance_km:+c0.d.toFixed(2),duree_s:Math.round(c0.t/1000),vitesse_max:Math.round(c0.vmax),vitesse_moy:Math.round(c0.vavg),angle_max:Math.round(c0.lmax),angle_moy:Math.round(c0.lavg),max_gauche:Math.round(rm.mL),max_droite:Math.round(rm.mR),g_lateral_max:rm.gL,freinage_max:rm.gB,relance_max:rm.gA,freinages_forts:rm.hb||0,virages:rm.c.length,denivele:Math.round(dpL||0)};try{stats.score=score(rm)}catch(x){}}}catch(e){}
+    var cfg={version:"v140",ios:IOSR,formule_lacet:IOSR?"alpha*ux+beta*uy+gamma*uz":"beta*ux+gamma*uy+alpha*uz",GR:GR,KS:KS,DL:DL,wOff:wOff,eco:ECO,vue:CAM,effets:FX3,paysage:(typeof SCN!=="undefined"?SCN:null),moto:(typeof curBike!=="undefined"?curBike:null),modele3d:(typeof M3I!=="undefined"?M3I:null),ecran:[screen.width,screen.height,window.devicePixelRatio||1],ua:navigator.userAgent};
+    var trk=rm?{colonnes:["lat","lon","angle","kmh","alt","t_s"],points:rm.p,virages_colonnes:["lat","lon","angle_max","cote","heure"],virages:rm.c,tours:rm.laps||null,circuit:rm.gate||null}:null;
+    saveFile("brutes-moto-"+d[0][0]+".json","application/json",JSON.stringify({app:"angle-moto",exporte_le:new Date().toLocaleString("fr-FR"),meta:meta,stats:stats,reglages:cfg,parcours:trk,sortie:rm,
+      cols:["t","v","w","ra","rb","rg","ux","uy","uz","f","fs","lat","lon","cap","cap_gps","precision_m","v_gps","alt","ax","ay","az","gx","gy","gz","o_alpha","o_beta","o_gamma","affiche","fusion","calib"],
+      cols_aide:{t:"heure (ms)",v:"vitesse m/s",w:"lacet rad/s (apres correction)",ra:"rotationRate.alpha deg/s",rb:"rotationRate.beta deg/s",rg:"rotationRate.gamma deg/s",ux:"verticale dans le telephone x",f:"angle brut",fs:"angle lisse (+ = droite)",cap:"cap utilise",cap_gps:"cap donne par le GPS",ax:"acceleration sans gravite m/s2",gx:"acceleration avec gravite",o_alpha:"orientation boussole",affiche:"angle affiche",fusion:"fusion attitude active",calib:"calibrage en cours"},
+      n:d.length,rows:d}));
     $("msg").textContent=d.length+" lignes pr\u00EAtes \u2014 choisis Enregistrer dans Fichiers."};
   rawLbl();
 
