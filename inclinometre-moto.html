@@ -430,8 +430,8 @@ body.gmode .gs{display:none!important}
 <div class="btns btns3" id="hq"></div>
 <div class="btns btns2" id="tools"><div class="sh"><span>Outils</span><button class="pill" id="tlx">Fermer</button></div>
   <div class="tsec">🏍 Avant de partir</div>
-  <button id="wub" class="sm" data-i="🔥">Préchauffage</button><button id="wxb" class="sm" data-i="☀️">Météo</button><button id="bkb" class="sm" data-i="🏍">Ma moto</button><button id="clb" class="sm" data-i="🎯">Calibrer</button><button id="ksb" class="sm" data-i="🎚">Force 100%</button><button id="rst" class="sm" data-i="↺">Reset max</button>
-  <p class="tleg">Calibrer : touche Démarrer puis roule droit à plus de 40 km/h. Force : sensibilité de l’angle affiché.</p>
+  <button id="wub" class="sm" data-i="🔥">Préchauffage</button><button id="wxb" class="sm" data-i="☀️">Météo</button><button id="bkb" class="sm" data-i="🏍" style="display:none">Ma moto</button><button id="clb" class="sm" data-i="🎯">Calibrer</button><button id="ksb" class="sm" data-i="🎚" style="display:none">Force 100%</button><button id="rst" class="sm" data-i="↺">Reset max</button>
+  <p class="tleg">Calibrer : se fait tout seul en début de sortie (ligne droite à plus de 45 km/h) ; le bouton sert à le relancer.</p>
   <div class="tsec">🗺 Routes et arrêts</div>
   <button id="balb" class="sm" data-i="🛣">Balades</button><button id="stab" class="sm" data-i="⛽">Stations</button><button id="rtb" class="sm" data-i="🌄" style="display:none">Belles routes</button><button id="brkb" class="sm" data-i="☕">Pause</button>
   <p class="tleg">Pour dessiner ton propre tracé : ouvre la Carte et fais un appui long pour poser des points.</p>
@@ -970,7 +970,7 @@ function Bike3D(cv,MODEL){
     if(spdT<2)spdA=0;spdPrev=spdT;spdFT=now}
   try{wOff=+localStorage.getItem('woff')||0;DL=+localStorage.getItem('dl')||3}catch(e){}
   var KS=.6,KSL=[1,.8,.6,1.2];
-  try{KS=+localStorage.getItem('ks2')||.6}catch(e){}
+  KS=.8;
   function effK(k){return KS<1?KS+(1-KS)*Math.max(0,Math.min(1,(k-50)/30)):KS}
   function lowF(k){return k>=45?1:0.6+0.4*Math.max(0,(k-15)/30)}
   function dz(a){var m=Math.abs(a);if(m<=DL)return 0;if(m>=2*DL)return a;return (a<0?-1:1)*m*(m-DL)/DL}
@@ -1092,7 +1092,7 @@ function Bike3D(cv,MODEL){
   m3Load(M3I,function(ok){$("bike3d").style.opacity="";var m=$("msg");if(m)m.textContent=m.textContent.replace(/rendu : [^\]]*\]/,"rendu : "+(ok?M3N[M3I]+" 3D":"moto 3D simple")+"]")});
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(M3N[M3I]+" 3D"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v122 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v123 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1,ts:1,pr:1,cl:1,fd:1,bf:1,rd:1,rn:1,ng:0},P2=-1,Z3=1,FIN=0,CAM=0,NEON=7,NUM="46";
   try{FIN=+localStorage.getItem("fin3")||0;CAM=+localStorage.getItem("cam3")||0;var ne=localStorage.getItem("neon3");if(ne!=null)NEON=+ne;NUM=localStorage.getItem("num3")||"46"}catch(e){}
@@ -1492,7 +1492,7 @@ function Bike3D(cv,MODEL){
   }
   $("balb").onclick=function(){tools(false);balTab="routes";if(!rts.length)routesLoad(rtR);else balView("")};
   /* raccourcis d'accueil et choix de navigation */
-  var SCUT=[["balb","Balades et routes"],["adimb","\u00C9cran noir auto"],["stab","Stations"],["wxb","M\u00E9t\u00E9o"],["dimb","\u00C9cran \u00E9pur\u00E9"],["clb","Calibrer"],["ksb","Force"],["rdb","Radars"],["ecob","\u00C9conomie batterie"],["wub","Pr\u00E9chauffage"],["brkb","Pause"],["dem","D\u00E9mo"]],
+  var SCUT=[["balb","Balades et routes"],["adimb","\u00C9cran noir auto"],["stab","Stations"],["wxb","M\u00E9t\u00E9o"],["dimb","\u00C9cran \u00E9pur\u00E9"],["clb","Calibrer"],["rdb","Radars"],["ecob","\u00C9conomie batterie"],["wub","Pr\u00E9chauffage"],["brkb","Pause"],["dem","D\u00E9mo"]],
       shortSel=getJ("short",["balb","stab"]).filter(function(x){return x!=="rtb"}),navK="plans";try{navK=localStorage.getItem("nav")||"plans"}catch(e){}
   var NAVN={plans:"Plans",waze:"Waze",gmaps:"Google Maps"};
   function shortDraw(){var hq=$("hq");hq.innerHTML=SCUT.filter(function(s){return shortSel.indexOf(s[0])>=0}).map(function(s){return'<button data-sh="'+s[0]+'">'+s[1]+'</button>'}).join("")}
@@ -3163,7 +3163,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 122 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 123 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
