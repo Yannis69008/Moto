@@ -372,6 +372,20 @@ body.cmode .dash,body.cmode .gs,body.cmode .btns3,body.cmode #wup,body.cmode #mr
 #tools button[data-i]::before{content:attr(data-i);display:block;font-size:22px;line-height:1;margin-bottom:4px}
 #tools button.sm{min-height:70px}
 #hbtn::before{content:"📊";display:block;font-size:22px;line-height:1.1}#tlb::before{content:"⚙️";display:block;font-size:22px;line-height:1.1}button#start{white-space:nowrap;font-size:clamp(17px,5.4vw,22px);letter-spacing:.03em}body.mapmode #hbtn::before,body.mapmode #tlb::before{display:none}
+
+#hudg{display:none!important}
+#hud.nv{padding:8px 14px!important;min-width:0;max-width:none!important;right:10px}
+#hud.nv .hr{gap:8px;align-items:flex-end;justify-content:space-between;width:100%}
+#hud .hn{display:flex;flex-direction:column;align-items:flex-start;line-height:1;white-space:nowrap}
+#hud .hn small{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--mut);margin-bottom:4px}
+#hud .hn b{font-size:clamp(18px,6vw,28px);font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+#hud .hn:first-child b{font-size:clamp(24px,8vw,36px)}
+#hud.nv~#fol{top:150px}#hud.nv~#rmode{top:192px}#hud.nv~#ctr{top:234px}#hud.nv~#lim{top:150px!important}
+#hud.nv #hudal{display:none}
+#irt{display:none!important}
+#stp{margin-top:0!important;padding:12px 18px!important;font-size:18px!important;font-weight:800!important;border-radius:14px!important;background:#ff3d5a!important;color:#fff!important;border-color:transparent!important}
+#ir{justify-content:center;gap:6px}
+body.gmode .gs{display:none!important}
 </style>
 </head>
 <body>
@@ -381,7 +395,7 @@ body.cmode .dash,body.cmode .gs,body.cmode .btns3,body.cmode #wup,body.cmode #mr
 <div id="nav">
   <div id="me"><svg viewBox="0 0 34 42" width="34" height="42"><path d="M17 2 L31 38 L17 30 L3 38 Z" fill="#4cc2ff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg></div>
   <div id="attr">&copy; OpenStreetMap</div>
-  <div id="hud"><div class="hr"><b id="hudv">--:--</b><small id="hudd"></small></div><div id="hudal">▲ — · —</div><div id="hudg">lat <b id="hudl">0,00</b> · acc <b id="huda">0,00</b> · fr <b id="hudb">0,00</b> g</div></div>
+  <div id="hud"><div class="hr"><div class="hn"><small>ARRIVÉE</small><b id="hudv">--:--</b></div><div class="hn"><small>RESTE</small><b id="hudk">—</b></div><div class="hn"><small>TEMPS</small><b id="hudm">—</b></div><small id="hudd" style="display:none"></small></div><div id="hudal">▲ — · —</div><div id="hudg">lat <b id="hudl">0,00</b> · acc <b id="huda">0,00</b> · fr <b id="hudb">0,00</b> g</div></div>
   <div id="lim"></div>
   <div id="warn"></div>
   <button id="fol" class="pill">Suivi</button>
@@ -1054,7 +1068,7 @@ function Bike3D(cv,MODEL){
   m3Load(M3I,function(ok){$("bike3d").style.opacity="";var m=$("msg");if(m)m.textContent=m.textContent.replace(/rendu : [^\]]*\]/,"rendu : "+(ok?M3N[M3I]+" 3D":"moto 3D simple")+"]")});
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(M3N[M3I]+" 3D"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v116 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v118 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1,ts:1,pr:1,cl:1,fd:1,bf:1,rd:1,rn:1,ng:0},P2=-1,Z3=1,FIN=0,CAM=0,NEON=7,NUM="46";
   try{FIN=+localStorage.getItem("fin3")||0;CAM=+localStorage.getItem("cam3")||0;var ne=localStorage.getItem("neon3");if(ne!=null)NEON=+ne;NUM=localStorage.getItem("num3")||"46"}catch(e){}
@@ -1073,7 +1087,7 @@ function Bike3D(cv,MODEL){
   var lastTouch=0,yaw=0,vw="bike",gx0=0,gy0=0,gdrag=false,gmoved=false,gyaw0=0,gLat=0,gLon=0,gH=[],gLastS=0,gLastD=0,gLatD=0,gLonD=0,gmS=1,lgs=0;
   function moving(){return demo||v*3.6>=3}
   function setView(w){
-    vw=w;var stg=document.querySelector(".stage");stg.classList.toggle("gview",w==="g");stg.classList.toggle("cview",w==="c");document.body.classList.toggle("cmode",w==="c");
+    vw=w;var stg=document.querySelector(".stage");stg.classList.toggle("gview",w==="g");stg.classList.toggle("cview",w==="c");document.body.classList.toggle("cmode",w==="c");document.body.classList.toggle("gmode",w==="g");
     $("vtb").classList.toggle("on",w==="bike");$("vtg").classList.toggle("on",w==="g");$("vtc").classList.toggle("on",w==="c");
     if(w==="bike"&&b3)setTimeout(function(){b3.render()},30);
   }
@@ -1138,7 +1152,7 @@ function Bike3D(cv,MODEL){
     big(14,"left",la<-.03?"LATÉRAL ← GAUCHE":(la>.03?"LATÉRAL DROITE →":"LATÉRAL"),gfmt(Math.abs(la))+" g",la<-.03?cL:(la>.03?cR:fg));
     big(W-14,"right",lo<-.03?"FREINAGE":(lo>.03?"ACCÉLÉRATION":"LONGITUDINAL"),gfmt(Math.abs(lo))+" g",lo<-.03?cB:(lo>.03?cA:fg));
     /* --- cercle d'adherence --- */
-    var top=hy+18,topH=H*.60-top+10,cx=W/2,cy=top+topH/2,R=Math.max(24,Math.min(W/2-46,topH/2-12));
+    var top=hy+16,topH=H*.68-top+10,cx=W/2,cy=top+topH/2,R=Math.max(24,Math.min(W/2-26,topH/2-14));
     var bg=g.createRadialGradient(cx,cy,0,cx,cy,R*1.05);bg.addColorStop(0,dark?"rgba(120,140,255,.10)":"rgba(80,110,230,.07)");bg.addColorStop(1,dark?"rgba(120,140,255,.02)":"rgba(80,110,230,.015)");
     g.fillStyle=bg;g.beginPath();g.arc(cx,cy,R,0,7);g.fill();
     g.strokeStyle=mut;g.lineWidth=1;
@@ -1162,12 +1176,12 @@ function Bike3D(cv,MODEL){
     var gw=g.createRadialGradient(px,py,0,px,py,24);gw.addColorStop(0,dc);gw.addColorStop(1,"rgba(0,0,0,0)");g.globalAlpha=.35;g.fillStyle=gw;g.beginPath();g.arc(px,py,24,0,7);g.fill();g.globalAlpha=1;
     g.fillStyle=dc;g.strokeStyle=dark?"#0b0c1e":"#fff";g.lineWidth=3;g.beginPath();g.arc(px,py,9,0,7);g.fill();g.stroke();
     /* angles max a cote du cercle */
-    var mx=Math.max(30,(cx-R)/2+4),my=cy+R*.55;g.textAlign="center";
-    g.font="700 10px "+FF;g.fillStyle=mut;g.fillText("ANGLE MAX",mx,my-26);g.fillText("ANGLE MAX",W-mx,my-26);
-    g.font="800 28px "+FF;g.fillStyle=cL;g.fillText(Math.round(maxL)+"°",mx,my+2);g.fillStyle=cR;g.fillText(Math.round(maxR)+"°",W-mx,my+2);
-    g.font="600 10px "+FF;g.fillStyle=mut;g.fillText("max "+gfmt(gPk.l)+" g",mx,my+16);g.fillText("max "+gfmt(gPk.r)+" g",W-mx,my+16);
+    var my=cy+R-6;
+    g.font="700 10px "+FF;g.fillStyle=mut;g.textAlign="left";g.fillText("ANGLE MAX",14,my-28);g.textAlign="right";g.fillText("ANGLE MAX",W-14,my-28);
+    g.font="800 26px "+FF;g.fillStyle=cL;g.textAlign="left";g.fillText(Math.round(maxL)+"°",14,my-2);g.fillStyle=cR;g.textAlign="right";g.fillText(Math.round(maxR)+"°",W-14,my-2);
+    g.font="600 10px "+FF;g.fillStyle=mut;g.textAlign="left";g.fillText("max "+gfmt(gPk.l)+" g",14,my+12);g.textAlign="right";g.fillText("max "+gfmt(gPk.r)+" g",W-14,my+12);
     /* --- courbes des 20 dernieres secondes --- */
-    var y0=top+topH+18,ch=H-y0-92;
+    var y0=top+topH+14,ch=H-y0-88;
     if(ch>30){
       var x0=12,x1=W-12,zy=y0+ch/2;
       g.fillStyle=dark?"rgba(255,255,255,.03)":"rgba(20,30,90,.03)";g.fillRect(x0,y0,x1-x0,ch);
@@ -2278,7 +2292,7 @@ function Bike3D(cv,MODEL){
     nav.k=k;nav.dn=dn;
     var seg=(nav.cum[bi+1]||nav.cum[bi])-nav.cum[bi],s0=nav.cum[bi]+bu*seg,rem=Math.max(0,nav.tot-s0),dd=hav(lat,lon,nav.dest[0],nav.dest[1]);
     nav.s0=s0;
-    if(!nav.done){var eta=new Date(Date.now()+nav.dur*rem/nav.tot*1000);$("hud").classList.add("nv");setT("hudv",pad(eta.getHours())+":"+pad(eta.getMinutes()));setT("hudd",fmtD(rem))}
+    if(!nav.done){var eta=new Date(Date.now()+nav.dur*rem/nav.tot*1000);$("hud").classList.add("nv");setT("hudv",pad(eta.getHours())+":"+pad(eta.getMinutes()));setT("hudk",fmtD(rem));setT("hudm",fmtT(nav.dur*rem/nav.tot))}
     var cv=curveAhead(s0);
     navCT=(cv&&cv.dist<300&&!nav.done)?"\u26A0 Virage serr\u00E9 \u00E0 "+cv.dir+" dans "+fmtD(cv.dist):"";curveRefresh();
     if(dd<35||(k>=st.length-1)){
@@ -3084,7 +3098,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 116 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 118 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
