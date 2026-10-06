@@ -237,7 +237,7 @@ body.mapmode .top{justify-content:space-between}
 #rwrap.b3{border-bottom:0!important}
 #rwrap.b3 #rbike3d{display:block!important}
 #rwrap.b3 #rbike{display:none}
-#rad{position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:30;background:#ffb703;color:#111;border-radius:16px;padding:10px 14px;font-size:22px;font-weight:700;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3);pointer-events:none;max-width:436px;margin:0 auto}
+#rad{cursor:pointer;pointer-events:auto!important;position:fixed;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top,0px));z-index:30;background:#ffb703;color:#111;border-radius:16px;padding:10px 14px;font-size:22px;font-weight:700;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3);pointer-events:none;max-width:436px;margin:0 auto}
 
 
 
@@ -955,7 +955,8 @@ function Bike3D(cv,MODEL){
 </script>
 <script>
 (function(){
-  var wOff=0,DL=3,cal=null,GR=1.4,spdT=null,spdD=null;
+  var wOff=0,DL=3,cal=null,GR=1.4,spdT=null,spdD=null,spdLast=null,spdV=null,spdHist=[],spdBias=0;
+  function spdFix(){if(spdD==null||!spdHist.length||!fwdOK||demo)return;var ref=spdHist[0][1],e=spdT-ref;if(Math.abs(e)>25)return;spdD+=.4*e;spdHist.forEach(function(q){q[1]+=.4*e});spdBias=Math.max(-.15,Math.min(.15,spdBias-.25*e/35.3))}
   try{wOff=+localStorage.getItem('woff')||0;DL=+localStorage.getItem('dl')||3}catch(e){}
   var KS=.6,KSL=[1,.8,.6,1.2];
   try{KS=+localStorage.getItem('ks2')||.6}catch(e){}
@@ -1059,7 +1060,7 @@ function Bike3D(cv,MODEL){
   m3Load(M3I,function(ok){$("bike3d").style.opacity="";var m=$("msg");if(m)m.textContent=m.textContent.replace(/rendu : [^\]]*\]/,"rendu : "+(ok?M3N[M3I]+" 3D":"moto 3D simple")+"]")});
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(M3N[M3I]+" 3D"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v110 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v114 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1,ts:1,pr:1,cl:1,fd:1,bf:1,rd:1,rn:1,ng:0,nu:0,gar:1},P2=-1,Z3=1,FIN=0,CAM=0,NEON=7,NUM="46";
   try{FIN=+localStorage.getItem("fin3")||0;CAM=+localStorage.getItem("cam3")||0;var ne=localStorage.getItem("neon3");if(ne!=null)NEON=+ne;NUM=localStorage.getItem("num3")||"46"}catch(e){}
@@ -1123,50 +1124,75 @@ function Bike3D(cv,MODEL){
     }
     st.addEventListener("pointerup",pend);st.addEventListener("pointercancel",pend);
   })();
+  var gEnv=null,gPk={l:0,r:0,a:0,b:0};
+  function gEnvAdd(la,lo){
+    if(!gEnv){gEnv=[];for(var i=0;i<36;i++)gEnv.push(0)}
+    var r=Math.hypot(la,lo);if(r<.05)return;var k=Math.floor(((Math.atan2(lo,la)*180/Math.PI+360)%360)/10)%36;if(r>gEnv[k])gEnv[k]=Math.min(2.5,r);
+    if(-la>gPk.l)gPk.l=-la;if(la>gPk.r)gPk.r=la;if(lo>gPk.a)gPk.a=lo;if(-lo>gPk.b)gPk.b=-lo;
+  }
   function gDraw(t){
     var cv=$("gcv"),dpr=Math.min(2,window.devicePixelRatio||1),W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
     var pw=Math.round(W*dpr),ph=Math.round(H*dpr);if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph}
     var g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
     var cs=getComputedStyle(document.documentElement),fg=cs.getPropertyValue("--fg").trim()||"#fff",mut=cs.getPropertyValue("--mut").trim()||"#999",cL=cs.getPropertyValue("--l").trim()||"#4cc2ff",cR=cs.getPropertyValue("--r").trim()||"#ff8a4c";
+    var FF=getComputedStyle(document.body).fontFamily||"sans-serif",cA="#22c55e",cB="#ff3d5a",dark=document.documentElement.getAttribute("data-theme")==="night";
     var pk=0;gH.forEach(function(s){var m=Math.max(Math.abs(s[1]),Math.abs(s[2]));if(m>pk)pk=m});
     var gT=pk>1?Math.min(2.5,Math.ceil(pk*2)/2):1;if(gT>=gmS)gmS=gT;else gmS+=(gT-gmS)*.03;var gm=gmS;
-    var topH=H*.62,cx=W/2,cy=topH/2+8,R=Math.max(20,Math.min(W/2-34,topH/2-14));
-    g.font="600 11px sans-serif";g.fillStyle=mut;g.textAlign="center";
-    g.lineWidth=1;g.strokeStyle=mut;g.globalAlpha=.35;
-    for(var q=.5;q<=gm+.001;q+=.5){g.beginPath();g.arc(cx,cy,R*q/gm,0,7);g.stroke()}
-    g.beginPath();g.moveTo(cx-R,cy);g.lineTo(cx+R,cy);g.moveTo(cx,cy-R);g.lineTo(cx,cy+R);g.stroke();g.globalAlpha=1;
-    g.fillText("1 g",cx+R/gm+14,cy-3);
-    g.fillText("accél.",cx,cy-R-4);g.fillText("freinage",cx,cy+R+12);
-    g.textAlign="right";g.fillText("gauche",cx-R-4,cy+4);g.textAlign="left";g.fillText("droite",cx+R+4,cy+4);
-    var n=gH.length;
-    for(var k=0;k<n;k++){var s=gH[k],age=t-s[0];if(age>5000)continue;
-      g.globalAlpha=Math.max(.05,.55*(1-age/5000));g.fillStyle=fg;g.beginPath();g.arc(cx+s[1]/gm*R,cy-s[2]/gm*R,2.6,0,7);g.fill()}
+    /* --- en-tete : valeurs en direct --- */
+    var la=gLatD,lo=gLonD,hy=34;
+    function big(x,al,lab,val,col){g.textAlign=al;g.fillStyle=mut;g.font="700 11px "+FF;g.fillText(lab,x,16);g.fillStyle=col;g.font="800 24px "+FF;g.fillText(val,x,hy+8)}
+    big(14,"left",la<-.03?"LATÉRAL ← GAUCHE":(la>.03?"LATÉRAL DROITE →":"LATÉRAL"),gfmt(Math.abs(la))+" g",la<-.03?cL:(la>.03?cR:fg));
+    big(W-14,"right",lo<-.03?"FREINAGE":(lo>.03?"ACCÉLÉRATION":"LONGITUDINAL"),gfmt(Math.abs(lo))+" g",lo<-.03?cB:(lo>.03?cA:fg));
+    /* --- cercle d'adherence --- */
+    var top=hy+18,topH=H*.60-top+10,cx=W/2,cy=top+topH/2,R=Math.max(24,Math.min(W/2-46,topH/2-12));
+    var bg=g.createRadialGradient(cx,cy,0,cx,cy,R*1.05);bg.addColorStop(0,dark?"rgba(120,140,255,.10)":"rgba(80,110,230,.07)");bg.addColorStop(1,dark?"rgba(120,140,255,.02)":"rgba(80,110,230,.015)");
+    g.fillStyle=bg;g.beginPath();g.arc(cx,cy,R,0,7);g.fill();
+    g.strokeStyle=mut;g.lineWidth=1;
+    for(var q=.5;q<=gm+.001;q+=.5){g.globalAlpha=(Math.abs(q-1)<.01)?.55:.28;g.setLineDash(Math.abs(q-1)<.01?[]:[3,4]);g.beginPath();g.arc(cx,cy,R*q/gm,0,7);g.stroke()}
+    g.setLineDash([]);g.globalAlpha=.28;g.beginPath();g.moveTo(cx-R,cy);g.lineTo(cx+R,cy);g.moveTo(cx,cy-R);g.lineTo(cx,cy+R);g.stroke();g.globalAlpha=1;
+    g.font="600 10px "+FF;g.fillStyle=mut;g.textAlign="left";
+    for(q=.5;q<=gm+.001;q+=.5){var rq=R*q/gm;g.fillText(gfmt(q).replace(/,?0+$/,"").replace(/,$/,"")+" g",cx+rq*.71+3,cy-rq*.71-3)}
+    g.font="800 11px "+FF;g.textAlign="center";g.fillStyle=cA;g.fillText("ACCÉL.",cx,cy-R-6);g.fillStyle=cB;g.fillText("FREIN",cx,cy+R+15);
+    g.textAlign="right";g.fillStyle=cL;g.fillText("G",cx-R-7,cy+4);g.textAlign="left";g.fillStyle=cR;g.fillText("D",cx+R+7,cy+4);
+    /* enveloppe de la sortie (ton cercle d'adherence) */
+    if(gEnv){g.beginPath();for(var k=0;k<=36;k++){var kk=k%36,a0=(kk*10+5)*Math.PI/180,rr=Math.min(gm,gEnv[kk])/gm*R;var ex=cx+Math.cos(a0)*rr,ey=cy-Math.sin(a0)*rr;if(k===0)g.moveTo(ex,ey);else g.lineTo(ex,ey)}
+      g.closePath();g.fillStyle=dark?"rgba(255,255,255,.07)":"rgba(40,60,160,.07)";g.fill();g.strokeStyle=dark?"rgba(255,255,255,.35)":"rgba(40,60,160,.35)";g.lineWidth=1.4;g.stroke()}
+    /* trace des 5 dernieres secondes (comete) */
+    var tr=[];gH.forEach(function(s){var age=t-s[0];if(age<=5000)tr.push([cx+Math.max(-gm,Math.min(gm,s[1]))/gm*R,cy-Math.max(-gm,Math.min(gm,s[2]))/gm*R,age])});
+    g.lineCap="round";g.lineJoin="round";
+    for(k=1;k<tr.length;k++){var f0=1-tr[k][2]/5000;g.globalAlpha=Math.max(.04,.85*f0*f0);g.strokeStyle=fg;g.lineWidth=1+3*f0;g.beginPath();g.moveTo(tr[k-1][0],tr[k-1][1]);g.lineTo(tr[k][0],tr[k][1]);g.stroke()}
     g.globalAlpha=1;
-    var px=cx+Math.max(-gm,Math.min(gm,gLatD))/gm*R,py=cy-Math.max(-gm,Math.min(gm,gLonD))/gm*R;
-    g.fillStyle=gLon<-.1?"#ff3d5a":(gLon>.1?cR:cL);g.strokeStyle="#fff";g.lineWidth=3;g.beginPath();g.arc(px,py,9,0,7);g.fill();g.stroke();
-    g.textAlign="left";g.font="700 16px sans-serif";g.fillStyle=cL;g.fillText("lat "+gfmt(Math.abs(gLat))+" g",12,22);
-    g.textAlign="right";g.fillStyle=gLon<-.1?"#ff3d5a":cR;g.fillText((gLon<0?"frein ":"acc ")+gfmt(Math.abs(gLon))+" g",W-12,22);
-    var my=cy+R*.6;g.textAlign="center";
-    g.font="600 11px sans-serif";g.fillStyle=mut;g.fillText("max G",Math.max(28,(cx-R)/2),my);g.fillText("max D",W-Math.max(28,(cx-R)/2),my);
-    g.font="700 26px sans-serif";g.fillStyle=cL;g.fillText(Math.round(maxL)+"\u00B0",Math.max(28,(cx-R)/2),my+26);
-    g.fillStyle=cR;g.fillText(Math.round(maxR)+"\u00B0",W-Math.max(28,(cx-R)/2),my+26);
-    var y0=topH+16,ch=H-y0-88;
+    /* point actuel */
+    var px=cx+Math.max(-gm,Math.min(gm,la))/gm*R,py=cy-Math.max(-gm,Math.min(gm,lo))/gm*R,dc=Math.abs(lo)>Math.abs(la)?(lo<0?cB:cA):(la<0?cL:cR);
+    if(Math.hypot(la,lo)<.04)dc=fg;
+    var gw=g.createRadialGradient(px,py,0,px,py,24);gw.addColorStop(0,dc);gw.addColorStop(1,"rgba(0,0,0,0)");g.globalAlpha=.35;g.fillStyle=gw;g.beginPath();g.arc(px,py,24,0,7);g.fill();g.globalAlpha=1;
+    g.fillStyle=dc;g.strokeStyle=dark?"#0b0c1e":"#fff";g.lineWidth=3;g.beginPath();g.arc(px,py,9,0,7);g.fill();g.stroke();
+    /* angles max a cote du cercle */
+    var mx=Math.max(30,(cx-R)/2+4),my=cy+R*.55;g.textAlign="center";
+    g.font="700 10px "+FF;g.fillStyle=mut;g.fillText("ANGLE MAX",mx,my-26);g.fillText("ANGLE MAX",W-mx,my-26);
+    g.font="800 28px "+FF;g.fillStyle=cL;g.fillText(Math.round(maxL)+"°",mx,my+2);g.fillStyle=cR;g.fillText(Math.round(maxR)+"°",W-mx,my+2);
+    g.font="600 10px "+FF;g.fillStyle=mut;g.fillText("max "+gfmt(gPk.l)+" g",mx,my+16);g.fillText("max "+gfmt(gPk.r)+" g",W-mx,my+16);
+    /* --- courbes des 20 dernieres secondes --- */
+    var y0=top+topH+18,ch=H-y0-92;
     if(ch>30){
       var x0=12,x1=W-12,zy=y0+ch/2;
-      g.strokeStyle=mut;g.globalAlpha=.35;g.lineWidth=1;g.beginPath();g.moveTo(x0,zy);g.lineTo(x1,zy);g.stroke();
-      g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y0);g.moveTo(x0,y0+ch);g.lineTo(x1,y0+ch);g.stroke();g.globalAlpha=1;
-      function line(ix,col){
-        var pts=[];gH.forEach(function(q){var x=x0+(1-(t-q[0])/20000)*(x1-x0);if(x<x0)return;pts.push([x,zy-Math.max(-gm,Math.min(gm,q[ix]))/gm*(ch/2)])});
-        if(pts.length<3)return;
-        function tr(){g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(var k=1;k<pts.length-1;k++){g.quadraticCurveTo(pts[k][0],pts[k][1],(pts[k][0]+pts[k+1][0])/2,(pts[k][1]+pts[k+1][1])/2)}g.lineTo(pts[pts.length-1][0],pts[pts.length-1][1])}
-        var lp=pts[pts.length-1];
-        tr();g.lineTo(lp[0],zy);g.lineTo(pts[0][0],zy);g.closePath();g.globalAlpha=.13;g.fillStyle=col;g.fill();g.globalAlpha=1;
-        tr();g.strokeStyle=col;g.lineWidth=2.2;g.lineJoin="round";g.lineCap="round";g.stroke();
-        g.fillStyle=col;g.beginPath();g.arc(lp[0],lp[1],3.5,0,7);g.fill()}
-      g.font="600 10px sans-serif";g.fillStyle=mut;g.textAlign="left";g.globalAlpha=.8;g.fillText("+"+gfmt(gm)+" g",x0+2,y0+11);g.fillText("\u2212"+gfmt(gm)+" g",x0+2,y0+ch-4);g.globalAlpha=1;
-      line(1,cL);line(2,cR);
-      g.font="600 11px sans-serif";g.textAlign="left";g.fillStyle=cL;g.fillText("— latéral",x0,y0+ch+14);g.fillStyle=cR;g.fillText("— accél. / freinage",x0+70,y0+ch+14);
-      g.fillStyle=mut;g.textAlign="right";g.fillText("20 s",x1,y0+ch+14);
+      g.fillStyle=dark?"rgba(255,255,255,.03)":"rgba(20,30,90,.03)";g.fillRect(x0,y0,x1-x0,ch);
+      g.strokeStyle=mut;g.globalAlpha=.3;g.lineWidth=1;g.setLineDash([3,4]);g.beginPath();g.moveTo(x0,zy);g.lineTo(x1,zy);g.stroke();g.setLineDash([]);
+      for(var sx=5;sx<20;sx+=5){var xx=x1-sx/20*(x1-x0);g.beginPath();g.moveTo(xx,y0);g.lineTo(xx,y0+ch);g.stroke()}g.globalAlpha=1;
+      function pts(ix){var o=[];gH.forEach(function(q){var x=x0+(1-(t-q[0])/20000)*(x1-x0);if(x<x0)return;o.push([x,zy-Math.max(-gm,Math.min(gm,q[ix]))/gm*(ch/2)])});return o}
+      function path(P){g.beginPath();g.moveTo(P[0][0],P[0][1]);for(var k=1;k<P.length-1;k++)g.quadraticCurveTo(P[k][0],P[k][1],(P[k][0]+P[k+1][0])/2,(P[k][1]+P[k+1][1])/2);g.lineTo(P[P.length-1][0],P[P.length-1][1])}
+      var PL=pts(1),PA=pts(2);
+      if(PL.length>2){
+        [[cR,y0,zy],[cL,zy,y0+ch]].forEach(function(z){g.save();g.beginPath();g.rect(x0,z[1],x1-x0,z[2]-z[1]);g.clip();path(PL);g.lineTo(PL[PL.length-1][0],zy);g.lineTo(PL[0][0],zy);g.closePath();g.globalAlpha=.22;g.fillStyle=z[0];g.fill();g.globalAlpha=1;path(PL);g.strokeStyle=z[0];g.lineWidth=2.6;g.stroke();g.restore()});
+      }
+      if(PA.length>2){
+        [[cA,y0,zy],[cB,zy,y0+ch]].forEach(function(z){g.save();g.beginPath();g.rect(x0,z[1],x1-x0,z[2]-z[1]);g.clip();path(PA);g.strokeStyle=z[0];g.lineWidth=1.8;g.setLineDash([5,3]);g.stroke();g.setLineDash([]);g.restore()});
+      }
+      g.font="600 10px "+FF;g.fillStyle=mut;g.textAlign="left";g.fillText("+"+gfmt(gm)+" g",x0+4,y0+11);g.fillText("−"+gfmt(gm)+" g",x0+4,y0+ch-4);
+      g.textAlign="right";["−15 s","−10 s","−5 s"].forEach(function(l,i){g.fillText(l,x1-(15-5*i)/20*(x1-x0)-3,y0+11)});g.fillText("maintenant",x1-3,y0+11);
+      g.font="700 11px "+FF;g.textAlign="left";var ly=y0+ch+15;
+      g.fillStyle=cL;g.fillText("━ latéral G",x0,ly);g.fillStyle=cR;g.fillText("/ D",x0+70,ly);
+      g.fillStyle=cA;g.fillText("╍ accél.",x0+104,ly);g.fillStyle=cB;g.fillText("/ frein",x0+160,ly);
     }
   }
   var cc={},hold=0,holdS=1,holdT=0,lgv=0,hfL=0,hfM=0,hfT=0,hsA=0,htA=0,pkA={v:0,t:0},pkB={v:0,t:0};function gfmt(x){return x.toFixed(2).replace(".",",")}
@@ -1388,8 +1414,9 @@ function Bike3D(cv,MODEL){
     var tm=$("rtt")?$("rtt").value:null,start=Date.now();
     if(tm){var pp=tm.split(":");var d0=new Date();d0.setHours(+pp[0],+pp[1],0,0);start=d0.getTime()}
     var pl=bal?balPlan(start):null,hx='<div class="hh"><button class="pill" id="balx">Fermer</button><h2>Balades</h2><span></span></div>';
-    hx+='<div class="seg" style="grid-template-columns:1fr 1fr!important;margin:0 0 10px"><button data-bt="routes"'+(balTab==="routes"?' class="on"':'')+'>Belles routes</button><button data-bt="loop"'+(balTab==="loop"?' class="on"':'')+'>Boucles</button></div>';
+    hx+='<div class="seg" style="grid-template-columns:1fr 1fr 1fr!important;margin:0 0 10px"><button data-bt="routes"'+(balTab==="routes"?' class="on"':'')+'>Belles routes</button><button data-bt="cols"'+(balTab==="cols"?' class="on"':'')+'>\u26F0\uFE0F Cols</button><button data-bt="loop"'+(balTab==="loop"?' class="on"':'')+'>Boucles</button></div>';
     if(balTab==="routes")hx+=routesHtml(note);
+    else if(balTab==="cols")hx+=colsHtml(note);
     else{
       hx+='<div class="sec">Boucle depuis ici</div><p class="legend" style="margin:0 2px 4px">Choisis la distance : l\u2019app dessine une boucle qui revient \u00E0 ton point de d\u00E9part. Elle ne sait pas si la route est belle, c\u2019est une base \u00E0 ajuster.</p><div class="chips">'+[10,20,30,40].map(function(k){return'<button data-lp="'+k+'">'+k+' km</button>'}).join("")+'</div>';
       hx+='<p class="legend" id="balm" style="margin:0 2px 8px">'+esc(note||"")+'</p>';
@@ -1549,6 +1576,33 @@ function Bike3D(cv,MODEL){
     var seen={},out=[];res.forEach(function(x){if(!seen[x.name]){seen[x.name]=1;out.push(x)}});
     return out.slice(0,12)}
   function routesView(note){balTab="routes";balView(note)}
+  /* ---------- cols routiers (OpenStreetMap : mountain_pass sur une route) ---------- */
+  var cols=[],colR=100,colSort="d",colsDone=false;
+  function colsView(note){balTab="cols";balView(note)}
+  function colsHtml(note){
+    var hx='<p class="legend" style="margin:0 2px 4px">Cols franchis par une route goudronn\u00E9e autour de toi (OpenStreetMap). V\u00E9rifie l\u2019ouverture en saison (certains cols ferment l\u2019hiver).</p><div class="chips">'+[25,50,100].map(function(k){return'<button data-cr="'+k+'"'+(k===colR?' class="on"':'')+'>'+k+' km</button>'}).join("")+'</div>';
+    if(cols.length)hx+='<div class="chips"><button data-cs="d"'+(colSort==="d"?' class="on"':'')+'>Les plus proches</button><button data-cs="e"'+(colSort==="e"?' class="on"':'')+'>Les plus hauts</button></div>';
+    hx+='<p class="legend" id="balm" style="margin:0 2px 8px">'+esc(note||"")+'</p>';
+    var L=cols.slice().sort(function(a,b){return colSort==="e"?(b.e||0)-(a.e||0):a.d-b.d});
+    L.forEach(function(x){var i=cols.indexOf(x),up=(x.e!=null&&altS!=null)?Math.round(x.e-altS):null;
+      hx+='<div class="card" style="padding:10px 14px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>\u26F0\uFE0F '+esc(x.n)+'</b><span style="white-space:nowrap;font-weight:700">'+(x.e!=null?x.e+" m":"")+'</span></div><div class="legend" style="margin:2px 0 8px">\u00E0 '+x.d.toFixed(0)+' km \u00E0 vol d\u2019oiseau'+(x.r?' \u00B7 sur '+esc(x.r):'')+(up!=null&&up>0?' \u00B7 +'+up+' m depuis ici':'')+'</div><div class="btns"><button data-cg="'+i+'">Y aller avec l\u2019app</button><button data-cp="'+i+'">Ouvrir dans '+NAVN[navK]+'</button></div></div>'});
+    return hx}
+  function colsLoad(R){
+    colR=R;cols=[];colsDone=false;colsView("Recherche des cols\u2026 (peut prendre 20 \u00E0 40 secondes)");
+    if(lastLat==null){gps();colsView("Position inconnue : attends que le GPS te trouve, puis r\u00E9essaie.");return}
+    var lat=lastLat,lon=lastLon,HW='["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|road|service)$"]["surface"!~"unpaved|gravel|dirt|ground|sand|grass|compacted|fine_gravel"]',
+      q='[out:json][timeout:60];node(around:'+(R*1000)+','+lat+','+lon+')["mountain_pass"="yes"]["name"]->.p;way(bn.p)'+HW+'->.r;node(w.r)->.rn;node.rn.p->.q;.q out;way(bn.q)'+HW+';out body;',
+      urls=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
+    function go(i){
+      var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){ac&&ac.abort()},70000);
+      fetch(urls[i]+"?data="+encodeURIComponent(q),ac?{signal:ac.signal}:{}).then(function(x){clearTimeout(to);return x.json()}).then(function(j){
+        var ns=[],ws=[];(j.elements||[]).forEach(function(e){if(e.type==="node")ns.push(e);else if(e.type==="way")ws.push(e)});
+        var rdOf={},seen={};ws.forEach(function(w){var t=w.tags||{},lb=t.ref||t.name||"";if(!lb)return;(w.nodes||[]).forEach(function(nd){if(!rdOf[nd]||(t.ref&&rdOf[nd].indexOf(" ")>=0))rdOf[nd]=lb})});
+        cols=[];ns.forEach(function(e){var t=e.tags||{},nm=t["name:fr"]||t.name;if(!nm||seen[nm])return;seen[nm]=1;
+          var el=parseFloat(String(t.ele||"").replace(",","."));cols.push({n:nm,lat:e.lat,lon:e.lon,e:isNaN(el)?null:Math.round(el),d:hav(lat,lon,e.lat,e.lon)/1000,r:rdOf[e.id]||""})});
+        colsDone=true;colsView(cols.length?cols.length+(cols.length>1?" cols trouv\u00E9s.":" col trouv\u00E9."):"Aucun col routier trouv\u00E9 dans ce rayon.")
+      }).catch(function(){clearTimeout(to);if(i+1<urls.length)go(i+1);else colsView("Impossible de charger les cols (internet requis, serveur occup\u00E9 ?). R\u00E9essaie dans un moment.")})}
+    go(0)}
   function routesHtml(note){
     var hx='<p class="legend" style="margin:0 2px 4px">Routes sinueuses autour de ta position, class\u00E9es d\u2019apr\u00E8s leur trac\u00E9 (OpenStreetMap). L\u2019app ne conna\u00EEt pas l\u2019\u00E9tat du rev\u00EAtement ni le trafic.</p><div class="chips">'+[15,25,40,70,100].map(function(k){return'<button data-rr="'+k+'"'+(k===rtR?' class="on"':'')+'>'+k+' km</button>'}).join("")+'</div><p class="legend" id="balm" style="margin:0 2px 8px">'+esc(note||"")+'</p>';
     rts.forEach(function(x,i){hx+='<div class="card" style="padding:10px 14px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(x.name)+'</b><span style="color:#ffb703;white-space:nowrap">'+"\u2605".repeat(x.st)+"\u2606".repeat(5-x.st)+'</span></div><div class="legend" style="margin:2px 0 8px">'+x.len.toFixed(0)+' km \u00B7 \u00E0 '+x.d.toFixed(0)+' km de toi \u00B7 '+Math.round(x.cv)+'\u00B0 de virage par km</div><div class="btns"><button data-rt="'+i+'">Faire cette route</button><button data-rp="'+i+'">Ouvrir dans '+NAVN[navK]+'</button></div></div>'});
@@ -1573,7 +1627,12 @@ function Bike3D(cv,MODEL){
     if(t.id==="balx")this.classList.remove("open");
     else if(t.getAttribute&&t.getAttribute("data-sc")){var sid=t.getAttribute("data-sc"),si=shortSel.indexOf(sid);if(si>=0)shortSel.splice(si,1);else shortSel.push(sid);setJ("short",shortSel);shortDraw();cfgView()}
     else if(t.getAttribute&&t.getAttribute("data-nv")){navK=t.getAttribute("data-nv");try{localStorage.setItem("nav",navK)}catch(x){}cfgView()}
-    else if(t.getAttribute&&t.getAttribute("data-bt")){balTab=t.getAttribute("data-bt");if(balTab==="routes"&&!rts.length)routesLoad(rtR);else balView("")}
+    else if(t.getAttribute&&t.getAttribute("data-bt")){balTab=t.getAttribute("data-bt");if(balTab==="routes"&&!rts.length)routesLoad(rtR);else if(balTab==="cols"&&!colsDone)colsLoad(colR);else balView("")}
+    else if(t.getAttribute&&t.getAttribute("data-cr")){colsLoad(+t.getAttribute("data-cr"))}
+    else if(t.getAttribute&&t.getAttribute("data-cs")){colSort=t.getAttribute("data-cs");balView("")}
+    else if(t.getAttribute&&t.getAttribute("data-cp")){var cq=cols[+t.getAttribute("data-cp")];if(cq)navPoint(cq.lat,cq.lon)}
+    else if(t.getAttribute&&t.getAttribute("data-cg")){var cg=cols[+t.getAttribute("data-cg")];if(!cg)return;$("balov").classList.remove("open");if(!mapOn){if(!mapOk()){$("msg").textContent="Carte indisponible : il faut une connexion internet.";return}toggleMap()}
+      setTimeout(function(){startTo({n:cg.n,lat:cg.lat,lon:cg.lon})},150)}
     else if(t.getAttribute&&t.getAttribute("data-rr")){routesLoad(+t.getAttribute("data-rr"))}
     else if(t.getAttribute&&t.getAttribute("data-rt")){var rx=rts[+t.getAttribute("data-rt")];if(!rx)return;if(lastLat==null){gps();return}var rm=$("balm");if(rm)rm.textContent="Calcul de l\u2019itin\u00E9raire\u2026";balRoute(rtPts(rx),rx.name,function(err){if(err){var m2=$("balm");if(m2)m2.textContent="Impossible de calculer (internet requis).";return}balView("");var rs_=$("balres");if(rs_)rs_.scrollIntoView()})}
     else if(t.getAttribute&&t.getAttribute("data-rp")){var ry=rts[+t.getAttribute("data-rp")];if(!ry)return;navRoute(rtPts(ry))}
@@ -1660,12 +1719,20 @@ function Bike3D(cv,MODEL){
     if(FX3.gar&&!ECO&&vw==="bike"&&b3&&!mapOn&&!moving()&&!on&&!demo&&!gdrag&&t-lastTouch>5000&&t-lastTouch<70000){yaw+=dt*.45;if(yaw>Math.PI)yaw-=2*Math.PI;b3.setYaw(yaw)}
     if(yaw!==0&&moving()&&!gdrag){yaw=((yaw+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;yaw*=Math.exp(-dt/.15);if(Math.abs(yaw)<.01)yaw=0;if(b3)b3.setYaw(yaw)}
     var gk=1-Math.exp(-dt/.12);gLatD+=(gLat-gLatD)*gk;gLonD+=(gLon-gLonD)*gk;
-    if(t-gLastS>60){gLastS=t;gH.push([t,gLatD,gLonD]);while(gH.length&&t-gH[0][0]>22000)gH.shift()}
+    if(t-gLastS>60){gLastS=t;gH.push([t,gLatD,gLonD]);if(moving()||demo)gEnvAdd(gLatD,gLonD);while(gH.length&&t-gH[0][0]>22000)gH.shift()}
     if(vw==="g"&&t-gLastD>50){gLastD=t;gDraw(t)}
     else if(vw==="c"){lapLive();if(t-gLastD>120){gLastD=t;lapDraw()}}
     if(t-jT>=50){jT=t;var jd=Math.abs(f-2*jf1+jf2);jf2=jf1;jf1=f;jm+=(jd-jm)*(1-Math.exp(-.05/.5))}
     disp+=(f-disp)*(1-Math.exp(-dt/(.11+Math.min(1,Math.max(0,(jm-.25)/.4))*.3)));
-    if(spdT!=null){spdD=spdT<1?spdT:(spdD==null||Math.abs(spdT-spdD)>40?spdT:spdD+(spdT-spdD)*(1-Math.exp(-dt/.45)));setH("spd",Math.round(spdD)+' <small>km/h</small>')}else spdD=null;
+    if(spdT!=null){
+      /* vitesse fluide : l'accelerometre fait avancer le compteur entre deux points GPS, chaque point GPS recale (retard GPS ~0,6 s compense) */
+      var useA=!demo&&fwdOK&&spdT>3;
+      if(spdD==null||Math.abs(spdT-spdD)>40){spdD=spdT;spdHist=[]}
+      else if(useA){spdD+=Math.max(-1.2,Math.min(1.2,gS-spdBias))*9.81*3.6*dt;spdHist.push([t,spdD]);while(spdHist.length&&t-spdHist[0][0]>600)spdHist.shift()}
+      else spdD+=(spdT-spdD)*(1-Math.exp(-dt/.45));
+      if(spdT<1)spdD+=(0-spdD)*(1-Math.exp(-dt/.3));if(spdD<0)spdD=0;
+      spdV=spdV==null?spdD:spdV+(spdD-spdV)*(1-Math.exp(-dt/.15));
+      var sv=Math.round(spdV);if(spdLast!=null&&Math.abs(spdV-spdLast)<.6)sv=spdLast;spdLast=sv;setH("spd",sv+' <small>km/h</small>')}else{spdD=null;spdV=null;spdLast=null;spdHist=[]}
     var dch=false;
     if(vw==="bike"&&b3){var gq=Math.abs(gLonD),pd=(gLonD<0?-1:1)*Math.max(0,gq-.03)*14;pd=Math.max(-6,Math.min(6,pd));if(gLonD>.13)pd=Math.min(14,pd+(gLonD-.13)*60);
       dch=b3.setDyn(pd,Math.max(0,Math.min(1,(-gLonD-.08)/.22)),demo?Math.max(v*3.6,0):v*3.6,maxL,maxR)}
@@ -1716,7 +1783,7 @@ function Bike3D(cv,MODEL){
     if(!navigator.geolocation){setH("spd","GPS indisponible");return}
     gid=navigator.geolocation.watchPosition(function(p){
       var s=p.coords.speed;v=(s==null||s<0)?0:s;var k=Math.round(v*3.6);gStep(s==null||s<0?null:v,p.timestamp||Date.now());
-      spdT=(s==null||s<0)?null:v*3.6;if(spdT==null)setH("spd","-- <small>km/h</small>");
+      spdT=(s==null||s<0)?null:v*3.6;spdFix();if(spdT==null)setH("spd","-- <small>km/h</small>");
       lastLat=p.coords.latitude;lastLon=p.coords.longitude;
       tempUpdate(lastLat,lastLon);lapStep(lastLat,lastLon,p.timestamp||Date.now());
       var al=p.coords.altitude;
@@ -1764,7 +1831,7 @@ function Bike3D(cv,MODEL){
     try{
       if(!(await ensure()))return;
       gps();
-      raw=[];rawT=0;movS=null;rainT=0;lapReset();dpL=0;altA=altS;hsA=0;htA=0;hfL=hfM=f;hfT=0;ride={bike:curBike,id:Date.now(),t0:Date.now(),t1:Date.now(),mL:0,mR:0,mV:0,gA:0,gB:0,gL:0,hb:0,p:[],c:[]};if(gate)ride.gate=gate;pv=null;gl=0;hbArm=true;cs={on:false};lastStore=0;if(live)live.setLatLngs([]);liveSegs.forEach(function(x){map&&map.removeLayer(x)});liveSegs=[];prevLL=null;
+      raw=[];rawT=0;movS=null;gEnv=null;gPk={l:0,r:0,a:0,b:0};rainT=0;lapReset();dpL=0;altA=altS;hsA=0;htA=0;hfL=hfM=f;hfT=0;ride={bike:curBike,id:Date.now(),t0:Date.now(),t1:Date.now(),mL:0,mR:0,mV:0,gA:0,gB:0,gL:0,hb:0,p:[],c:[]};if(gate)ride.gate=gate;pv=null;gl=0;hbArm=true;cs={on:false};lastStore=0;if(live)live.setLatLngs([]);liveSegs.forEach(function(x){map&&map.removeLayer(x)});liveSegs=[];prevLL=null;
       on=true;wxLast.t=0;setTimeout(wxCheck,3000);$("start").textContent="Terminer";$("start").classList.add("rec");
       $("msg").textContent="Sortie en cours. L'angle apparaît au-dessus de "+MIN+" km/h.";
       try{wl=await navigator.wakeLock.request("screen")}catch(e){}
@@ -1853,24 +1920,37 @@ function Bike3D(cv,MODEL){
   calLabel();
 
   /* ---------- zones de danger (radars fixes OpenStreetMap) ---------- */
-  var rad=getJ("radc",{cx:null,cy:null,list:[]}),radOn=true,radBusy=false,radW={},radP={},radShown=0;
+  var rad=getJ("radc2",{cx:null,cy:null,list:[]}),radOn=true,radBusy=false,radW={},radP={},radShown=0,radIg=getJ("radig",{}),radCur=null;
   try{radOn=localStorage.getItem("rad")!=="0"}catch(e){}
   function radLabel(){$("rdb").textContent=radOn?"Radars : oui":"Radars : non"}
   function radFetch(lat,lon){
     if(radBusy||(rad.cx!=null&&hav(rad.cx,rad.cy,lat,lon)<8000))return;
     radBusy=true;
-    var q='[out:json][timeout:20];node(around:20000,'+lat+','+lon+')["highway"="speed_camera"];out;';
-    var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){ac&&ac.abort()},15000);
+    var q='[out:json][timeout:25];node(around:20000,'+lat+','+lon+')["highway"="speed_camera"]->.c;.c out;way(bn.c)["highway"];out geom;rel(bn.c)["type"="enforcement"]->.e;.e out body;node(r.e:"from");out;';
+    var ac=window.AbortController?new AbortController():null,to=setTimeout(function(){ac&&ac.abort()},20000);
     fetch("https://overpass-api.de/api/interpreter?data="+encodeURIComponent(q),ac?{signal:ac.signal}:{}).then(function(x){clearTimeout(to);return x.json()}).then(function(j){
       if(!j.elements)throw 0;
-      rad={cx:lat,cy:lon,list:j.elements.map(function(e){return{id:e.id,lat:e.lat,lon:e.lon,ms:(e.tags&&e.tags.maxspeed)||"",dr:(e.tags&&e.tags.direction!=null&&!isNaN(+e.tags.direction))?+e.tags.direction:null}})};
-      setJ("radc",rad);
+      var cams=[],ways=[],rels=[],nodes={},CARD={N:0,NNE:22.5,NE:45,ENE:67.5,E:90,ESE:112.5,SE:135,SSE:157.5,S:180,SSW:202.5,SW:225,WSW:247.5,W:270,WNW:292.5,NW:315,NNW:337.5};
+      j.elements.forEach(function(e){if(e.type==="way")ways.push(e);else if(e.type==="relation")rels.push(e);else if(e.type==="node"){nodes[e.id]=e;if(e.tags&&e.tags.highway==="speed_camera")cams.push(e)}});
+      function wayBrg(id){for(var k=0;k<ways.length;k++){var w=ways[k],ix=(w.nodes||[]).indexOf(id);if(ix<0||!w.geometry)continue;var g=w.geometry,a=g[Math.max(0,ix-1)],b=g[Math.min(g.length-1,ix+1)];if(a&&b&&(a.lat!==b.lat||a.lon!==b.lon))return brg(a.lat,a.lon,b.lat,b.lon)}return null}
+      function dirOf(e){var t=e.tags||{},d=String(t.direction||t["camera:direction"]||"").trim(),u=d.toUpperCase();
+        if(d==="")return null;if(/^(both|all)$/i.test(d))return "bi";
+        if(!isNaN(+d))return(+d%360+360)%360;if(CARD[u]!=null)return CARD[u];
+        var wb=wayBrg(e.id);if(wb==null)return null;if(/^forward$/i.test(d))return wb;if(/^backward$/i.test(d))return(wb+180)%360;return null}
+      var relDir={};rels.forEach(function(r){var dev=null,fr=null;(r.members||[]).forEach(function(m){if(m.type==="node"&&(m.role==="device"||m.role==="to"))dev=dev||m.ref;if(m.type==="node"&&m.role==="from")fr=m.ref});
+        if(dev&&fr&&nodes[fr]&&nodes[dev])relDir[dev]=brg(nodes[fr].lat,nodes[fr].lon,nodes[dev].lat,nodes[dev].lon)});
+      rad={cx:lat,cy:lon,list:cams.map(function(e){var dr=dirOf(e);if(dr==null&&relDir[e.id]!=null)dr=relDir[e.id];return{id:e.id,lat:e.lat,lon:e.lon,ms:(e.tags&&e.tags.maxspeed)||"",dr:dr==="bi"?null:dr,bi:dr==="bi"}})};
+      setJ("radc2",rad);
     }).catch(function(){}).then(function(){radBusy=false});
   }
   function radToast(t){
     var el=$("rad");if(!t){el.style.display="none";return}
-    el.style.display="block";if(cc.rt!==t){cc.rt=t;el.textContent=t}
+    el.style.display="block";if(cc.rt!==t){cc.rt=t;el.innerHTML=t}
   }
+  $("rad").onclick=function(){
+    if(!radCur||hT==null)return;var a=radIg[radCur]||[];a.push(Math.round(hT));radIg[radCur]=a.slice(-4);setJ("radig",radIg);
+    radW[radCur]=Date.now();radToast("");$("msg").textContent="Radar ignor\u00E9 dans ce sens. Il te pr\u00E9viendra toujours dans l\u2019autre sens.";
+  };
   function radarStep(){
     if(!radOn||lastLat==null)return;
     radFetch(lastLat,lastLon);
@@ -1881,7 +1961,8 @@ function Bike3D(cv,MODEL){
       if(d>3200&&radW[c.id])delete radW[c.id];
       if(d>maxd)return;
       var b=brg(lastLat,lastLon,c.lat,c.lon),df=Math.abs(((b-hT+540)%360)-180);
-      if(c.dr!=null&&Math.abs(((c.dr-hT+540)%360)-180)>100)return;
+      if(c.dr!=null&&Math.abs(((c.dr-hT+540)%360)-180)>70)return;
+      var ig=radIg[c.id];if(ig&&ig.some(function(a){return Math.abs(((a-hT+540)%360)-180)<60}))return;
       if(nav&&!nav.done&&nav.s0!=null){
         var co=nav.co,bd=1e9,bs=0,i,cl=Math.cos(c.lat*Math.PI/180)*111320;
         for(i=0;i<co.length-1;i++){
@@ -1901,7 +1982,7 @@ function Bike3D(cv,MODEL){
     if(!best){if(now-radShown>4000)radToast("");return}
     var c=best.c,d=Math.round(best.d/10)*10;
     radShown=now;
-    radToast("\u26A0 Zone de danger dans "+d+" m"+(c.ms?" \u00B7 limite "+c.ms:""));if(!radW[c.id]||now-radW[c.id]>600000)say("Zone de danger dans "+d+" m"+(c.ms?", limite "+c.ms:""));
+    radCur=c.id;radToast("\u26A0 Zone de danger dans "+d+" m"+(c.ms?" \u00B7 limite "+c.ms:"")+(c.dr==null&&!c.bi?'<small style="display:block;font-size:14px;font-weight:600;margin-top:2px">Pas dans ton sens ? Touche ici pour l\u2019ignorer dans ce sens</small>':""));if(!radW[c.id]||now-radW[c.id]>600000)say("Zone de danger dans "+d+" m"+(c.ms?", limite "+c.ms:""));
     if(!radW[c.id]||now-radW[c.id]>600000){radW[c.id]=now;beep(1200);setTimeout(function(){beep(1200)},260);setTimeout(function(){beep(1200)},520)}
   }
   $("rdb").onclick=function(){radOn=!radOn;try{localStorage.setItem("rad",radOn?"1":"0")}catch(e){}radLabel();if(!radOn)radToast("");$("msg").textContent=radOn?"Alertes zones de danger activ\u00E9es : bip et message quand tu approches d\u2019un radar fixe connu d\u2019OpenStreetMap (internet requis, tous les radars ne sont pas r\u00E9pertori\u00E9s).":"Alertes zones de danger d\u00E9sactiv\u00E9es."};
@@ -3012,7 +3093,7 @@ function Bike3D(cv,MODEL){
       h+=l.slice(0,3).map(rideCard).join("");
       if(l.length>3)h+='<button id="tabh2" style="width:100%;margin-top:2px">Voir tout l’historique ( '+l.length+' )</button>';
     }
-    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 110 · rendu : '+R3+'.</p>';
+    if(stTab==="res"||!l.length)h+='<p class="legend" style="margin-top:14px">Modèles 3D (Sketchfab), simplifiés : « 2025 Yamaha MT-09 SP V4 » et « BMW S1000 RR » par VTX (sketchfab.com/VTX_car), CC BY-NC-SA 4.0, usage non commercial · « Suzuki gsx 750 Bike » par RES1N (sketchfab.com/Resinnnn), « Honda CB500X » par DevanirGrau (sketchfab.com/devanirgrau), « Kawasaki ninja ZX-6R » par valvetin (sketchfab.com/valvetin), « Kawasaki Ninja H2 [free] » par Anshuman dutta (sketchfab.com/Anshuman_Dutta), tous CC BY 4.0. Version 114 · rendu : '+R3+'.</p>';
     $("hbody").innerHTML=h;
   }
   function col(a){return a<15?"#8da2d6":a<30?"#5ec8ff":a<45?"#ff8a4c":a<55?"#ff3d5a":"#d946ef"}
