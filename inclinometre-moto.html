@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Angle">
 <meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#eef2fb" id="tcm">
@@ -436,6 +436,8 @@ body.cmode .stage{background:#000!important;box-shadow:none!important;border:0!i
 .batin{width:64px;height:32px;border-radius:10px;border:1px solid rgba(127,127,127,.35);background:transparent;color:var(--fg);font-size:16px;text-align:center}
 /* plus de debordement sur le cote (la page ne doit jamais glisser a gauche/droite) */
 html,body{overflow-x:hidden;max-width:100%}
+html,body,button,.pill,.chips,#m3s,.ov{touch-action:manipulation}
+#m3s,.ov{-webkit-text-size-adjust:100%}
 #m3s .hh{position:sticky;top:-12px;z-index:3;background:var(--ovbg);padding:6px 0 8px}#m3s #m3x{font-size:18px;font-weight:700;min-height:48px;min-width:104px;padding:12px 22px;border-radius:24px}#m3s{overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;touch-action:pan-y}#m3s *{max-width:100%;box-sizing:border-box}
 #m3s .chips button{min-width:0!important;white-space:normal;overflow-wrap:anywhere;line-height:1.15}
 #m3s .legend,#m3s p{overflow-wrap:anywhere}
@@ -1074,7 +1076,7 @@ function Bike3D(cv,MODEL){
         b.save();b.beginPath();b.moveTo(-5,hy(-5));b.lineTo(W+5,hy(W+5));b.lineTo(W+5,H+5);b.lineTo(-5,H+5);b.closePath();b.clip();
         function sq(x1,x2,za,zb,col){zb-=.04*(za-zb);var a1=P(x1,za),a2=P(x2,za),a3=P(x2,zb),a4=P(x1,zb);
           /* tres pres de la camera la projection se retourne (le plus proche apparait plus haut que le plus loin) -> grand triangle clair qui clignote : on ne garde que la partie valide du morceau */
-          var okS=function(a,c){for(var xi=0;xi<2;xi++){var xx=xi?x2:x1,q1=P(xx,a),q2=P(xx,c);if(q1[2]<.3||q2[2]<.3)return false;if((q1[2]-q2[2])*(q1[1]-q2[1])>0&&Math.abs(q1[1]-q2[1])>2)return false}return true};
+          var okS=function(a,c){for(var xi=0;xi<2;xi++){var xx=xi?x2:x1,q1=P(xx,a),q2=P(xx,c);if(q1[2]<.3||q2[2]<.3)return false;var h1=q1[1]-hy(q1[0]),h2=q2[1]-hy(q2[0]);if((q1[2]-q2[2])*(h1-h2)>0&&Math.abs(h1-h2)>2)return false}return true};
           if(!okS(za,zb)){var fr=P(x1,za)[2]>P(x1,zb)[2]?za:zb,nr=fr===za?zb:za,gd=fr,bd=nr;for(var ci=0;ci<12;ci++){var mz=(gd+bd)/2;if(okS(fr,mz))gd=mz;else bd=mz}
             if(Math.abs(fr-gd)<.02)return 0;if(fr===za)zb=gd;else za=gd;a1=P(x1,za);a2=P(x2,za);a3=P(x2,zb);a4=P(x1,zb)}
           if(a1[2]<.3||a2[2]<.3||a3[2]<.3||a4[2]<.3)return 0;if(col)b.fillStyle=col;quad(b,a1,a2,a3,a4);return(a1[2]+a4[2])/2}
@@ -1426,7 +1428,7 @@ function Bike3D(cv,MODEL){
   m3Load(M3I,function(ok){$("bike3d").style.opacity="";var m=$("msg");if(m)m.textContent=m.textContent.replace(/rendu : [^\]]*\]/,"rendu : "+(ok?M3N[M3I]+" 3D":"moto 3D simple")+"]")});
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(M3N[M3I]+" 3D"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v150 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v151 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1,ts:1,pr:1,cl:1,fd:1,bf:1,rd:1,rn:1,ng:0},P2=-1,Z3=1,FIN=0,CAM=0,NEON=7,NUM="46";
   try{FIN=+localStorage.getItem("fin3")||0;CAM=+localStorage.getItem("cam3")||0;var ne=localStorage.getItem("neon3");if(ne!=null)NEON=+ne;NUM=localStorage.getItem("num3")||"46"}catch(e){}
@@ -3431,6 +3433,9 @@ function Bike3D(cv,MODEL){
     try{if(rp.fol){rp.map.setZoom(16,{animate:false})}else rp.map.fitBounds(rp.bd,{padding:[28,28],animate:false})}catch(e){}};
   $("rsp").onclick=function(){if(!rp)return;rp.si=(rp.si+1)%RSP.length;$("rsp").textContent="×"+RSP[rp.si]};
   $("rsl").oninput=function(){if(!rp)return;rp.t=+this.value;if(rp.t<rp.r.p.length-1&&!rp.play&&$("rplay").textContent.indexOf("Rejouer")>=0)$("rplay").textContent="▶ Lecture"};
+  /* pas de zoom de page (double-tap / pincement) : il decalait toute l'interface vers la droite */
+  ["gesturestart","gesturechange","gestureend"].forEach(function(ev){document.addEventListener(ev,function(e){if(!e.target.closest||!e.target.closest("#map,#dmap,#amap,#rmap"))e.preventDefault()},{passive:false})});
+  (function(){var vv=window.visualViewport;if(vv)vv.addEventListener("resize",function(){if(vv.scale>1.01){try{document.querySelector("meta[name=viewport]").setAttribute("content","width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover")}catch(e){}window.scrollTo(0,0)}})})();
   remind();
 
   /* ---------- historique ---------- */
