@@ -436,7 +436,7 @@ body.cmode .stage{background:#000!important;box-shadow:none!important;border:0!i
 .batin{width:64px;height:32px;border-radius:10px;border:1px solid rgba(127,127,127,.35);background:transparent;color:var(--fg);font-size:16px;text-align:center}
 /* plus de debordement sur le cote (la page ne doit jamais glisser a gauche/droite) */
 html,body{overflow-x:hidden;max-width:100%}
-#m3s{overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;touch-action:pan-y}#m3s *{max-width:100%;box-sizing:border-box}
+#m3s .hh{position:sticky;top:-12px;z-index:3;background:var(--ovbg);padding:6px 0 8px}#m3s #m3x{font-size:18px;font-weight:700;min-height:48px;min-width:104px;padding:12px 22px;border-radius:24px}#m3s{overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;touch-action:pan-y}#m3s *{max-width:100%;box-sizing:border-box}
 #m3s .chips button{min-width:0!important;white-space:normal;overflow-wrap:anywhere;line-height:1.15}
 #m3s .legend,#m3s p{overflow-wrap:anywhere}
 </style>
@@ -502,13 +502,13 @@ html,body{overflow-x:hidden;max-width:100%}
 <div id="shareov" class="ov"></div><div id="ctuto" class="ov"></div>
 <div id="rpl" class="ov">
   <div class="hh"><span></span><h2>Replay</h2><button class="pill" id="rx">Fermer</button></div>
-  <canvas id="rcv" class="card" style="width:100%;height:44vh;display:block"></canvas>
+  <div class="card" id="rmw" style="position:relative;height:44vh;padding:0;overflow:hidden"><div id="rmap" style="position:absolute;left:0;top:0;right:0;bottom:0;background:transparent"></div><canvas id="rcv" style="position:absolute;left:0;top:0;width:100%;height:100%;display:block;pointer-events:none;z-index:500"></canvas></div>
   <div class="card" style="display:flex;align-items:flex-end;gap:12px;padding:10px 14px;margin-top:10px">
     <div id="rwrap" style="height:104px;display:flex;align-items:flex-end;border-bottom:2px solid var(--mut)"><canvas id="rbike3d" style="width:128px;height:104px;display:none"></canvas><img id="rbike" alt="" style="height:100%;width:auto;transform-origin:49.8% 100%"></div>
     <div style="flex:1"><div style="font-size:54px;font-weight:700;line-height:1" id="rang">0&deg;</div><div class="sub" id="rside"></div></div>
     <div style="text-align:right"><div><b id="rspd" style="font-size:40px">0</b> <small style="color:var(--mut)">km/h</small></div><div class="sub" id="rtime">0:00</div></div>
   </div>
-  <div class="btns" style="margin-top:10px"><button id="rplay">&#9208; Pause</button><button id="rsp">&times;10</button></div>
+  <div class="btns" style="margin-top:10px"><button id="rplay">&#9208; Pause</button><button id="rsp">&times;10</button><button id="rfol">&#128205; Suivre</button></div>
   <input id="rsl" type="range" min="0" max="100" step="0.01" value="0" style="width:100%;margin-top:14px">
 </div>
 <input type="file" id="imp" accept=".json,application/json" style="display:none">
@@ -1072,7 +1072,12 @@ function Bike3D(cv,MODEL){
         for(z0=zA;z0>zB;){var stp=Math.abs(z0)<10?1:Math.abs(z0)<30?2.5:Math.abs(z0)<100?5:Math.abs(z0)<200?12:25;sg.push([z0,z0-stp]);z0-=stp}
         var hy=function(x){return hz.at(x)};
         b.save();b.beginPath();b.moveTo(-5,hy(-5));b.lineTo(W+5,hy(W+5));b.lineTo(W+5,H+5);b.lineTo(-5,H+5);b.closePath();b.clip();
-        function sq(x1,x2,za,zb,col){zb-=.04*(za-zb);var a1=P(x1,za),a2=P(x2,za),a3=P(x2,zb),a4=P(x1,zb);if(a1[2]<.3||a2[2]<.3||a3[2]<.3||a4[2]<.3)return 0;if(col)b.fillStyle=col;quad(b,a1,a2,a3,a4);return(a1[2]+a4[2])/2}
+        function sq(x1,x2,za,zb,col){zb-=.04*(za-zb);var a1=P(x1,za),a2=P(x2,za),a3=P(x2,zb),a4=P(x1,zb);
+          /* tres pres de la camera la projection se retourne (le plus proche apparait plus haut que le plus loin) -> grand triangle clair qui clignote : on ne garde que la partie valide du morceau */
+          var okS=function(a,c){for(var xi=0;xi<2;xi++){var xx=xi?x2:x1,q1=P(xx,a),q2=P(xx,c);if(q1[2]<.3||q2[2]<.3)return false;if((q1[2]-q2[2])*(q1[1]-q2[1])>0&&Math.abs(q1[1]-q2[1])>2)return false}return true};
+          if(!okS(za,zb)){var fr=P(x1,za)[2]>P(x1,zb)[2]?za:zb,nr=fr===za?zb:za,gd=fr,bd=nr;for(var ci=0;ci<12;ci++){var mz=(gd+bd)/2;if(okS(fr,mz))gd=mz;else bd=mz}
+            if(Math.abs(fr-gd)<.02)return 0;if(fr===za)zb=gd;else za=gd;a1=P(x1,za);a2=P(x2,za);a3=P(x2,zb);a4=P(x1,zb)}
+          if(a1[2]<.3||a2[2]<.3||a3[2]<.3||a4[2]<.3)return 0;if(col)b.fillStyle=col;quad(b,a1,a2,a3,a4);return(a1[2]+a4[2])/2}
         function hzc(c,w){return mixH(c,L2.sky,clamp(w/(SQ?160:55),0,1)*(.55+L2.hz*.4))}
         var gv=night?"#4a4a48":wx.k==="snow"?"#c9ccd0":"#a89f86",lw=night?"#c8ccd8":"#f4f6f8";
         sg.forEach(function(s){var w0=P(0,(s[0]+s[1])/2)[2];if(w0<.3)return;
@@ -1283,6 +1288,7 @@ function Bike3D(cv,MODEL){
      Corrige en v140 ; les reglages appris avec l'ancienne formule sont effaces une fois. */
   var IOSR=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
   try{if(localStorage.getItem("axfix")!=="1"){["afax","woff","dl"].forEach(function(k){localStorage.removeItem(k)});localStorage.setItem("axfix","1")}}catch(e){}
+  var gcP=null,gcH=[];function gcEnv(){var n=performance.now(),m=-1;for(var i=0;i<gcH.length;i++)if(n-gcH[i][0]<=4000&&gcH[i][1]>m)m=gcH[i][1];return m}
   var oA=null,oB=null,oG=null,acX=null,acY=null,acZ=null,agX=null,agY=null,agZ=null,gAcc=null,gHd=null,gSr=null;
   var spdFT=0,spdPrev=null,spdA=0;
   function spdFix(){var now=performance.now();if(spdT==null){spdPrev=null;spdA=0;return}
@@ -1380,6 +1386,7 @@ function Bike3D(cv,MODEL){
       lgs+=(Math.max(-2.5,Math.min(2.5,SG*(-v*w/9.81)))*zk*(-v*w>0?GR:1)-lgs)*0.07;
       phi=dz(phi);
       fy+=(phi-fy)*0.07;f=afStep(dq);
+      if(v*3.6>40){var gce=gcEnv();if(gce>=0){var gcc=1.5*gce+8;if(f>gcc)f=gcc;else if(f<-gcc)f=-gcc}}
       var tn=performance.now();fsl+=(f-fsl)*(1-Math.exp(-Math.min(.1,(tn-fsT)/1000)/(zon?.6:.35)));fsT=tn;
       var iv=e.interval||16.7;if(iv<1)iv*=1000;hfT+=Math.min(.05,iv/1000);
       if(hfT>=.25){hfT-=.25;var ja=(f-2*hfL+hfM)/.0625;hfM=hfL;hfL=f;if(ride){hsA+=ja*ja*.25;htA+=.25}}
@@ -1419,7 +1426,7 @@ function Bike3D(cv,MODEL){
   m3Load(M3I,function(ok){$("bike3d").style.opacity="";var m=$("msg");if(m)m.textContent=m.textContent.replace(/rendu : [^\]]*\]/,"rendu : "+(ok?M3N[M3I]+" 3D":"moto 3D simple")+"]")});
   try{PI3=+localStorage.getItem("paint")||0}catch(e){}
   var R3=b3?(M3N[M3I]+" 3D"):"photo (3D indisponible)";
-  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v147 \u00B7 rendu : "+R3+"]"},400);
+  setTimeout(function(){var m=$("msg");if(m&&!on)m.textContent=m.textContent+" [v150 \u00B7 rendu : "+R3+"]"},400);
   if(b3)b3.setPaint(PI3);if(r3)r3.setPaint(PI3);
   var FX3={g:1,o:1,p:1,s:1,l:1,sl:1,fu:1,ts:1,pr:1,cl:1,fd:1,bf:1,rd:1,rn:1,ng:0},P2=-1,Z3=1,FIN=0,CAM=0,NEON=7,NUM="46";
   try{FIN=+localStorage.getItem("fin3")||0;CAM=+localStorage.getItem("cam3")||0;var ne=localStorage.getItem("neon3");if(ne!=null)NEON=+ne;NUM=localStorage.getItem("num3")||"46"}catch(e){}
@@ -2329,6 +2336,10 @@ function Bike3D(cv,MODEL){
         setT("alv",Math.round(altS)+" m");updHudAl();setT("adv","+"+Math.round(dpL)+" m");
       }
       var hh=p.coords.heading;gAcc=p.coords.accuracy;gHd=(hh!=null&&!isNaN(hh))?hh:null;gSr=s;
+      /* garde-fou vent/vibrations : inclinaison "GPS" (variation du cap x vitesse) gardee 4 s ; sert de plafond a l'angle gyro */
+      if(gHd!=null&&v>4&&(gAcc==null||gAcc<=25)){var gtn=performance.now();
+        if(gcP&&gtn-gcP[0]>400&&gtn-gcP[0]<3000){var gdd=((gHd-gcP[1]+540)%360)-180,gla=Math.abs(Math.atan(v*(gdd*Math.PI/180)/((gtn-gcP[0])/1000)/9.81)*180/Math.PI);gcH.push([gtn,gla]);while(gcH.length&&gtn-gcH[0][0]>4500)gcH.shift()}
+        if(!gcP||gtn-gcP[0]>400)gcP=[gtn,gHd]}else{gcP=null}
       if(hh!=null&&!isNaN(hh)&&v>1.5)hT=hh;
       else if(pLat!=null&&hav(pLat,pLon,lastLat,lastLon)>12)hT=brg(pLat,pLon,lastLat,lastLon);
       if(pLat==null||hav(pLat,pLon,lastLat,lastLon)>12){pLat=lastLat;pLon=lastLon}
@@ -2434,8 +2445,8 @@ function Bike3D(cv,MODEL){
     if(ride){
       if(cs.on)endCorner();
       ride.t1=Date.now();try{localStorage.removeItem("rideopen")}catch(e){}
-      if(ride.p.length>=2){var k0=kmt();persist();try{localStorage.setItem(bkey("kmt"),String(k0+km(ride)))}catch(e){}remind();openId=ride.id;histLoad();$("msg").textContent="Sortie enregistrée."}
-      else{save(load().filter(function(x){return x.id!==ride.id}));$("msg").textContent="Sortie trop courte, non enregistrée."}
+      if(ride.p.length>=2&&ride.t1-ride.t0>=180000){var k0=kmt();persist();try{localStorage.setItem(bkey("kmt"),String(k0+km(ride)))}catch(e){}remind();openId=ride.id;histLoad();$("msg").textContent="Sortie enregistrée."}
+      else{save(load().filter(function(x){return x.id!==ride.id}));$("msg").textContent=(ride.p.length>=2?"Sortie de moins de 3 min : non enregistrée.":"Sortie trop courte, non enregistrée.")}
       ride=null;
     }
     try{wl&&wl.release&&wl.release()}catch(e){}
@@ -3007,6 +3018,11 @@ function Bike3D(cv,MODEL){
 
   /* ---------- bandeau virage dangereux ---------- */
   var navCT="",histCT="",hc=[];
+  function purgeShort(){try{if(localStorage.getItem("purge3"))return;var a=load(),sh=a.filter(function(x){return x.t1&&x.t0&&x.t1-x.t0<180000&&!(ride&&ride.id===x.id)});
+    if(!sh.length){localStorage.setItem("purge3","1");return}
+    if(confirm(sh.length+" sortie"+(sh.length>1?"s":"")+" de moins de 3 min dans l’historique. Les supprimer ?")){var ids={};sh.forEach(function(x){ids[x.id]=1});save(a.filter(function(x){return !ids[x.id]}));histLoad()}
+    localStorage.setItem("purge3","1")}catch(e){}}
+  setTimeout(purgeShort,2500);
   function histLoad(){
     var all=[],mx=0;loadB().forEach(function(r){r.c.forEach(function(c){all.push(c);if(c[2]>mx)mx=c[2]})});
     var th=Math.max(25,mx*.75);hc=all.filter(function(c){return c[2]>=th}).map(function(c){return{lat:c[0],lon:c[1],a:c[2],s:c[3]}});
@@ -3375,9 +3391,13 @@ function Bike3D(cv,MODEL){
     rp={r:r,t:0,play:true,si:2,last:0,raf:0,W:0,H:0,X:null};
     $("rbike").src=$("bikeimg").src;$("rsl").max=r.p.length-1;$("rsl").value=0;
     $("rplay").textContent="⏸ Pause";$("rsp").textContent="×"+RSP[rp.si];
-    $("rpl").classList.add("open");rp.raf=requestAnimationFrame(rpTick);
+    $("rpl").classList.add("open");rp.raf=requestAnimationFrame(rpTick);$("rfol").textContent="\uD83D\uDCCD Suivre";
+    var rr0=rp;setTimeout(function(){if(rp!==rr0||!window.L||!L.map)return;try{
+      var m=L.map("rmap",{zoomControl:false,attributionControl:true,zoomSnap:.5});tiles().addTo(m);
+      var bd=L.latLngBounds(r.p.map(function(q){return[q[0],q[1]]}));m.fitBounds(bd,{padding:[28,28],animate:false});
+      rr0.map=m;rr0.bd=bd;rr0.fol=false;setTimeout(function(){try{m.invalidateSize();if(!rr0.fol)m.fitBounds(bd,{padding:[28,28],animate:false})}catch(e){}},200)}catch(e){rr0.map=null}},120);
   }
-  function closeReplay(){if(rp){cancelAnimationFrame(rp.raf);rp=null}$("rpl").classList.remove("open")}
+  function closeReplay(){if(rp){cancelAnimationFrame(rp.raf);try{rp.map&&rp.map.remove()}catch(e){}rp=null}$("rpl").classList.remove("open")}
   function rpTick(ts){
     if(!rp)return;
     var dt=rp.last?Math.min(.1,(ts-rp.last)/1000):0;rp.last=ts;
@@ -3388,8 +3408,11 @@ function Bike3D(cv,MODEL){
     var cv=$("rcv"),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
     if(rp.W!==W||rp.H!==H){rp.W=W;rp.H=H;cv.width=W*dpr;cv.height=H*dpr;rp.X=rpProj(rp.r,W,H)}
     var g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
-    var p=rp.r.p,n=p.length,i=Math.min(n-2,Math.floor(rp.t)),u=Math.min(1,rp.t-i),X=rp.X;
+    var p=rp.r.p,n=p.length,i=Math.min(n-2,Math.floor(rp.t)),u=Math.min(1,rp.t-i),X=rp.X,rm=rp.map&&rp.map.latLngToContainerPoint?rp.map:null;
+    if(rm){if(rp.fol){var fa=p[i],fb=p[i+1];try{rm.setView([fa[0]+(fb[0]-fa[0])*u,fa[1]+(fb[1]-fa[1])*u],rm.getZoom(),{animate:false})}catch(e){}}
+      X=function(q){var pt=rm.latLngToContainerPoint([q[0],q[1]]);return[pt.x,pt.y]}}
     g.lineWidth=4;g.lineCap="round";g.lineJoin="round";
+    if(rm){g.strokeStyle="rgba(255,255,255,.85)";g.lineWidth=8;g.beginPath();p.forEach(function(q,j){var c=X(q);j?g.lineTo(c[0],c[1]):g.moveTo(c[0],c[1])});g.stroke();g.lineWidth=4}
     g.strokeStyle=TC().g2;g.beginPath();p.forEach(function(q,j){var c=X(q);j?g.lineTo(c[0],c[1]):g.moveTo(c[0],c[1])});g.stroke();
     for(var j=1;j<=i;j++){g.strokeStyle=col(Math.abs(p[j][2]));g.beginPath();var a=X(p[j-1]),b=X(p[j]);g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke()}
     var pa=p[i],pb=p[i+1],lat=pa[0]+(pb[0]-pa[0])*u,lon=pa[1]+(pb[1]-pa[1])*u,ang=pa[2]+(pb[2]-pa[2])*u,spd=pa[3]+(pb[3]-pa[3])*u,c=X([lat,lon]);
@@ -3404,6 +3427,8 @@ function Bike3D(cv,MODEL){
   }
   $("rx").onclick=closeReplay;
   $("rplay").onclick=function(){if(!rp)return;if(rp.t>=rp.r.p.length-1){rp.t=0;rp.play=true}else rp.play=!rp.play;$("rplay").textContent=rp.play?"⏸ Pause":"▶ Lecture"};
+  $("rfol").onclick=function(){if(!rp||!rp.map)return;rp.fol=!rp.fol;this.textContent=rp.fol?"\uD83D\uDDFA Ensemble":"\uD83D\uDCCD Suivre";
+    try{if(rp.fol){rp.map.setZoom(16,{animate:false})}else rp.map.fitBounds(rp.bd,{padding:[28,28],animate:false})}catch(e){}};
   $("rsp").onclick=function(){if(!rp)return;rp.si=(rp.si+1)%RSP.length;$("rsp").textContent="×"+RSP[rp.si]};
   $("rsl").oninput=function(){if(!rp)return;rp.t=+this.value;if(rp.t<rp.r.p.length-1&&!rp.play&&$("rplay").textContent.indexOf("Rejouer")>=0)$("rplay").textContent="▶ Lecture"};
   remind();
